@@ -1,0 +1,54 @@
+{
+  "avatarLink": "IMG_9588.PNG",
+  "profileName": "Ánh Sáng Lucas",
+  "startMessage": "Click For Peak",
+  "bioMessages": [
+    "he/they",
+    "05/25"
+  ],
+  "backgroundVideo": "assets/background.mp4",
+  "audioFiles": [
+    "14-system-music-daily-log-tv.ogg",
+    "35-eshop-menu-track-10.ogg",
+    "49-mii-maker-editing-a-mii-gamepad.ogg",
+    "same-smile-different-face-real-version-knower.ogg",
+    "spark-the-bird-and-the-bee.ogg"
+  ],
+  "preferredFirstType": null,
+  "fontPath": null,
+  "defaultVolume": 0.3,
+  "defaultTransparency": 0.7,
+  "fontFamily": "Angel Wish",
+  "badges": [
+    {
+      "icon": "IMG_7351.gif",
+      "tooltip": "Badge 1"
+    },
+    {
+      "icon": "IMG_7350.gif",
+      "tooltip": "Badge 2"
+    },
+    {
+      "icon": "IMG_7345.gif",
+      "tooltip": "Badge 3"
+    },
+    {
+      "icon": "IMG_7344.gif",
+      "tooltip": "Badge 4"
+    }
+  ],
+  "socialLinks": [
+    {
+      "icon": "assets/social-0.svg",
+      "url": "https://discord.gg/qMbUPN4Bby"
+    },
+    {
+      "icon": "assets/social-1.svg",
+      "url": ""
+    },
+    {
+      "icon": "assets/social-2.svg",
+      "url": "https://www.tiktok.com/@duongdt02"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+[
+  {
+    "label": "original",
+    "width": 1440,
+    "geometry": {
+      "x": 310,
+      "y": 250,
+      "width": 820,
+      "height": 400
+    },
+    "links": [
+      "https://discord.gg/qMbUPN4Bby",
+      "https://www.tiktok.com/@duongdt02"
+    ],
+    "errors": [],
+    "menu": 0,
+    "scrollHeight": 900
+  },
+  {
+    "label": "local",
+    "width": 1440,
+    "geometry": {
+      "x": 310,
+      "y": 250,
+      "width": 820,
+      "height": 400
+    },
+    "links": [
+      "https://discord.gg/qMbUPN4Bby",
+      "https://www.tiktok.com/@duongdt02"
+    ],
+    "errors": [],
+    "menu": 0,
+    "scrollHeight": 900
+  },
+  {
+    "label": "original",
+    "width": 390,
+    "geometry": {
+      "x": 39,
+      "y": 310,
+      "width": 312,
+      "height": 280
+    },
+    "links": [
+      "https://discord.gg/qMbUPN4Bby",
+      "https://www.tiktok.com/@duongdt02"
+    ],
+    "errors": [],
+    "menu": 0,
+    "scrollHeight": 900
+  },
+  {
+    "label": "local",
+    "width": 390,
+    "geometry": {
+      "x": 39,
+      "y": 310,
+      "width": 312,
+      "height": 280
+    },
+    "links": [
+      "https://discord.gg/qMbUPN4Bby",
+      "https://www.tiktok.com/@duongdt02"
+    ],
+    "errors": [],
+    "menu": 0,
+    "scrollHeight": 900
+  }
+]

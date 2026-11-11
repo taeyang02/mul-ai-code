@@ -1,0 +1,17 @@
+{
+  "name": "info-site-clone",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.mjs",
+    "build": "node build.mjs",
+    "test": "node verify.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "description": "",
+  "devDependencies": {
+    "playwright": "^1.65.0"
+  },
+  "private": true,
+  "type": "module"
+}
