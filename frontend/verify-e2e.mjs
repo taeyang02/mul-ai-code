@@ -168,8 +168,17 @@ async function suitePartialFailure(browser, endpointPath, sectionHint) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   const page = await context.newPage()
 
-  // Abort only the targeted API path (fault injection in runner)
-  await page.route(`**${endpointPath}**`, async (route) => {
+  // Abort only the targeted API path (exact pathname; do not let /site match /site/advantages)
+  const matchPath = (url) => {
+    try {
+      const p = new URL(url).pathname.replace(/\/$/, '') || '/'
+      const target = endpointPath.replace(/\/$/, '')
+      return p === target
+    } catch {
+      return false
+    }
+  }
+  await page.route(matchPath, async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
         status: 500,
@@ -217,9 +226,14 @@ async function suitePartialFailure(browser, endpointPath, sectionHint) {
   })
 
   // Remove fault injection — retry must hit real API
-  await page.unroute(`**${endpointPath}**`)
+  await page.unroute(matchPath)
   if (hasRetry) {
-    await retryControl(page).first().click()
+    // Prefer section-specific retry labels when present
+    const specific = page.getByRole('button', {
+      name: /Thử tải lại sản phẩm|Thử tải lại danh mục|Thử tải lại$/i,
+    })
+    const btn = (await specific.count()) > 0 ? specific.first() : retryControl(page).first()
+    await btn.click()
     await page.waitForTimeout(2000)
   } else {
     await page.reload({ waitUntil: 'networkidle' })
