@@ -163,10 +163,18 @@ async function launchBrowser() {
 }
 
 async function waitForApp(page) {
-  // Prefer load over networkidle: Vite HMR websockets can keep networkidle pending forever.
-  await page.goto(BASE_URL, { waitUntil: 'load', timeout: 60000 })
+  // domcontentloaded only: Vite HMR / lingering third-party requests can leave networkidle/load pending.
+  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await page.waitForSelector('#app', { timeout: 15000 })
-  await page.waitForTimeout(800)
+  // Wait for API-hydrated brand text (attached). Playwright "visible" can be false when webfonts
+  // leave a temporary 0×0 box under this environment's PID/shm pressure.
+  await page.waitForFunction(
+    () => {
+      const h1 = document.querySelector('header h1')
+      return !!(h1 && /Thanh An Bắc Giang/i.test(h1.textContent || ''))
+    },
+    { timeout: 30000 }
+  )
 }
 
 async function assertNoSevereConsole(consoleErrors, label) {
@@ -192,8 +200,15 @@ async function assertNoHorizontalOverflow(page, label) {
 }
 
 async function expectVisibleText(page, text, label) {
-  const visible = await page.getByText(text, { exact: false }).first().isVisible().catch(() => false)
-  assert(visible, `${label}: expected visible text "${text}"`)
+  const found = await page
+    .waitForFunction(
+      (t) => (document.body?.innerText || '').includes(t),
+      text,
+      { timeout: 15000 }
+    )
+    .then(() => true)
+    .catch(() => false)
+  assert(found, `${label}: expected visible text "${text}"`)
 }
 
 function retryControl(page) {
