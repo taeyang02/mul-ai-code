@@ -1,0 +1,487 @@
+openapi: 3.0.3
+info:
+  title: Thanh An Bắc Giang API
+  version: 1.0.0
+  description: |
+    Public REST API for the Thanh An Bắc Giang rebuild.
+    Shared contract between Backend (Cursor) and Frontend (Antigravity).
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+  - url: http://localhost:8080
+    description: Docker compose backend
+tags:
+  - name: Site
+  - name: Company
+  - name: Catalog
+  - name: Contact
+  - name: Quotes
+paths:
+  /api/v1/site:
+    get:
+      tags: [Site]
+      summary: Site shell (brand, hero, nav, SEO)
+      operationId: getSite
+      responses:
+        '200':
+          description: Site settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteResponse'
+  /api/v1/company:
+    get:
+      tags: [Company]
+      summary: Company profile
+      operationId: getCompany
+      responses:
+        '200':
+          description: Company profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyResponse'
+  /api/v1/categories:
+    get:
+      tags: [Catalog]
+      summary: Product categories
+      operationId: listCategories
+      responses:
+        '200':
+          description: Active categories ordered by sortOrder
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+  /api/v1/products:
+    get:
+      tags: [Catalog]
+      summary: Paginated product list
+      operationId: listProducts
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: Category slug filter
+        - name: featured
+          in: query
+          schema:
+            type: boolean
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Search in name / shortDescription / brand
+      responses:
+        '200':
+          description: Page of products
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPageResponse'
+  /api/v1/products/{id}:
+    get:
+      tags: [Catalog]
+      summary: Product detail by UUID
+      operationId: getProduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /api/v1/site/advantages:
+    get:
+      tags: [Site]
+      summary: Competitive advantages
+      operationId: listAdvantages
+      responses:
+        '200':
+          description: Advantages ordered by sortOrder
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdvantageResponse'
+  /api/v1/contact:
+    get:
+      tags: [Contact]
+      summary: Contact channels and hours
+      operationId: getContact
+      responses:
+        '200':
+          description: Contact info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContactResponse'
+  /api/v1/quote-requests:
+    post:
+      tags: [Quotes]
+      summary: Submit a quote request
+      operationId: createQuoteRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteRequestCreate'
+      responses:
+        '201':
+          description: Quote request accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteRequestResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+components:
+  parameters:
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+  responses:
+    BadRequest:
+      description: Validation or bad input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    TooManyRequests:
+      description: Rate limited
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    SiteResponse:
+      type: object
+      required: [brandName, heroTitle, navItems]
+      properties:
+        brandName:
+          type: string
+        tagline:
+          type: string
+          nullable: true
+        heroTitle:
+          type: string
+        heroSubtitle:
+          type: string
+          nullable: true
+        heroCtaLabel:
+          type: string
+          nullable: true
+        heroBadgePrimary:
+          type: string
+          nullable: true
+        heroBadgeSecondary:
+          type: string
+          nullable: true
+        seoTitle:
+          type: string
+          nullable: true
+        seoDescription:
+          type: string
+          nullable: true
+        navItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/NavItem'
+    NavItem:
+      type: object
+      required: [label, href]
+      properties:
+        label:
+          type: string
+        href:
+          type: string
+    CompanyResponse:
+      type: object
+      required: [legalName]
+      properties:
+        legalName:
+          type: string
+        tradeName:
+          type: string
+          nullable: true
+        foundedOn:
+          type: string
+          format: date
+          nullable: true
+        industry:
+          type: string
+          nullable: true
+        serviceArea:
+          type: string
+          nullable: true
+        statusLabel:
+          type: string
+          nullable: true
+        mission:
+          type: string
+          nullable: true
+        highlightTitle:
+          type: string
+          nullable: true
+        highlightBody:
+          type: string
+          nullable: true
+        projectsCompletedLabel:
+          type: string
+          nullable: true
+        partnersLabel:
+          type: string
+          nullable: true
+        taxCode:
+          type: string
+          nullable: true
+    CategoryResponse:
+      type: object
+      required: [id, slug, name, sortOrder]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+    ProductResponse:
+      type: object
+      required: [id, slug, name, category, featured, sortOrder]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        shortDescription:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        brand:
+          type: string
+          nullable: true
+        specsSummary:
+          type: string
+          nullable: true
+        features:
+          type: array
+          items:
+            type: string
+        imageUrl:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        sortOrder:
+          type: integer
+        category:
+          $ref: '#/components/schemas/CategorySummary'
+    CategorySummary:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+    ProductPageResponse:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductResponse'
+        page:
+          type: integer
+        size:
+          type: integer
+        totalItems:
+          type: integer
+          format: int64
+        totalPages:
+          type: integer
+    AdvantageResponse:
+      type: object
+      required: [id, title, description, sortOrder]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        iconKey:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+    ContactResponse:
+      type: object
+      required: [hotlineDisplay, hotlineE164]
+      properties:
+        addressOld:
+          type: string
+          nullable: true
+        addressNew:
+          type: string
+          nullable: true
+        addressNote:
+          type: string
+          nullable: true
+        hotlineDisplay:
+          type: string
+        hotlineE164:
+          type: string
+        hotlineContactName:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        zaloUrl:
+          type: string
+          nullable: true
+        facebookUrl:
+          type: string
+          nullable: true
+        businessHoursWeekday:
+          type: string
+          nullable: true
+        businessHoursWeekend:
+          type: string
+          nullable: true
+        mapEmbedUrl:
+          type: string
+          nullable: true
+    QuoteRequestCreate:
+      type: object
+      required: [fullName, phone, message]
+      properties:
+        fullName:
+          type: string
+          minLength: 2
+          maxLength: 150
+        phone:
+          type: string
+          minLength: 8
+          maxLength: 30
+          description: Digits, spaces, +, parentheses allowed
+        email:
+          type: string
+          format: email
+          nullable: true
+        companyName:
+          type: string
+          maxLength: 255
+          nullable: true
+        productInterest:
+          type: string
+          maxLength: 255
+          nullable: true
+        message:
+          type: string
+          minLength: 5
+          maxLength: 2000
+        sourcePage:
+          type: string
+          maxLength: 255
+          nullable: true
+        website:
+          type: string
+          nullable: true
+          description: Honeypot — must be omitted or empty
+    QuoteRequestResponse:
+      type: object
+      required: [id, status, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [NEW, CONTACTED, CLOSED]
+        createdAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [timestamp, status, error, code, message, path]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        code:
+          type: string
+          description: VALIDATION_ERROR | NOT_FOUND | RATE_LIMITED | BAD_REQUEST | INTERNAL_ERROR
+        message:
+          type: string
+        path:
+          type: string
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+    FieldError:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+        message:
+          type: string

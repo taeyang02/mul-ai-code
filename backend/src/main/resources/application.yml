@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: thanhan-api
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/thanhan}
+    username: ${DATABASE_USERNAME:thanhan}
+    password: ${DATABASE_PASSWORD:thanhan}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+  quote:
+    rate-limit:
+      max-requests: ${QUOTE_RATE_LIMIT_MAX:5}
+      window-seconds: ${QUOTE_RATE_LIMIT_WINDOW_SECONDS:300}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
