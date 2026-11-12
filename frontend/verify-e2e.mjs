@@ -1,229 +1,350 @@
+#!/usr/bin/env node
 /**
- * Automated Browser & Component Integration Verification Script
- * Covers all requirements from Codex Tech Lead:
- * 1. Partial failure test: only /products fails -> displays section alert + retry restores products without affecting other sections.
- * 2. Duplicate CTA removal: Hero has distinct 'Xem sản phẩm' and 'Yêu cầu báo giá'.
- * 3. Mobile hotline visibility: Hotline button visible outside drawer on first paint (viewport 390).
- * 4. Business copy check: No hardcoded unverified prose.
- * 5. Quote submission flow & console errors check.
+ * Real browser E2E harness for Thanh An Bắc Giang.
+ * - Opens the running Vite (or preview) app — does NOT fake results.
+ * - Fault injection via Playwright network routes only (never production hooks).
+ * - Any failed assertion exits nonzero.
+ *
+ * Env:
+ *   BASE_URL      default http://127.0.0.1:5173
+ *   API_BASE      default http://127.0.0.1:8080/api/v1
+ *   SHOT_DIR      default ./e2e-artifacts
+ *   CHROME_PATH   optional Chromium executable
+ *   DB_JDBC_CHECK default 1 — verify quote rows via JDBC helper if available
  */
-
-import { JSDOM } from 'jsdom'
+import { chromium } from 'playwright-core'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
+import { spawnSync } from 'child_process'
 
-// Mock Data strictly matching V2 seed from Backend
-const mockSite = {
-  brandName: 'Thanh An Bắc Giang',
-  tagline: 'Vật liệu xây dựng uy tín',
-  heroTitle: 'Vật liệu xây dựng Chất lượng vượt trội',
-  heroSubtitle: 'Chuyên phân phối Thép Hòa Phát, Xi măng Pomihua hàng đầu Bắc Giang. Uy tín - Giá cạnh tranh - Giao hàng tận công trình.',
-  heroCtaLabel: 'Yêu cầu báo giá',
-  heroBadgePrimary: 'Hoạt động từ 2015',
-  heroBadgeSecondary: 'Giao nhanh 24/7',
-  seoTitle: 'Thanh An Bắc Giang | Vật liệu xây dựng uy tín',
-  seoDescription: 'Công ty TNHH Thanh An Bắc Giang — phân phối Thép Hòa Phát, Xi măng Pomihua tại Bắc Giang.',
-  navItems: [
-    { label: 'Trang chủ', href: '/' },
-    { label: 'Giới thiệu', href: '/#about' },
-    { label: 'Sản phẩm', href: '/#products' },
-    { label: 'Lợi thế', href: '/#advantages' },
-    { label: 'Liên hệ', href: '/#contact' }
-  ]
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:5173'
+const API_BASE = process.env.API_BASE || 'http://127.0.0.1:8080/api/v1'
+const SHOT_DIR = process.env.SHOT_DIR || path.join(__dirname, 'e2e-artifacts')
+const CHROME_PATH =
+  process.env.CHROME_PATH ||
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ||
+  '/home/multica/.cache/ms-playwright/chromium_headless_shell-1254/chrome-headless-shell-linux64/chrome-headless-shell'
+
+const failures = []
+const logLines = []
+
+function log(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}`
+  console.log(line)
+  logLines.push(line)
 }
 
-const mockCompany = {
-  legalName: 'CÔNG TY TNHH THANH AN BẮC GIANG',
-  tradeName: 'THANH AN BẮC GIANG',
-  foundedOn: '2015-02-06',
-  industry: 'Bán buôn VLXD (Thép, Xi măng)',
-  serviceArea: 'Hiệp Hoà & toàn Bắc Giang',
-  statusLabel: 'Đang hoạt động mạnh mẽ',
-  mission: 'Cung cấp vật liệu xây dựng chính hãng, đúng tiến độ, đồng hành cùng mọi công trình từ nhà ở đến khu công nghiệp.',
-  highlightTitle: 'Thép & Xi măng số 1 Bắc Giang',
-  highlightBody: 'Đối tác chiến lược của Tập đoàn Hòa Phát và Xi măng Pomihua, đảm bảo nguồn hàng ổn định, giá tốt nhất thị trường.',
-  projectsCompletedLabel: '1500+',
-  partnersLabel: '50+',
-  taxCode: null
+function fail(msg) {
+  failures.push(msg)
+  log(`FAIL: ${msg}`)
 }
 
-const mockCategories = [
-  { id: '33333333-3333-3333-3333-333333333301', slug: 'thep', name: 'Thép xây dựng', description: 'Thép xây dựng chính hãng', sortOrder: 1 },
-  { id: '33333333-3333-3333-3333-333333333302', slug: 'xi-mang', name: 'Xi măng', description: 'Xi măng Pooc lăng', sortOrder: 2 }
-]
-
-const mockProducts = [
-  {
-    id: '44444444-4444-4444-4444-444444444401',
-    slug: 'thep-hoa-phat',
-    name: 'Thép Hòa Phát',
-    shortDescription: 'Thép xây dựng chất lượng cao',
-    description: 'Thép thanh vằn, thép cuộn D6-D32, thép hình, thép hộp đạt tiêu chuẩn JIS, ASTM. Độ bền vượt trội, chịu lực tốt cho mọi công trình.',
-    brand: 'Hòa Phát',
-    specsSummary: 'Hàng chính hãng JIS / ASTM',
-    features: ['Đa dạng quy cách, đủ chủng loại (D6 - D32)', 'Có chứng nhận hợp chuẩn chất lượng'],
-    imageUrl: null,
-    featured: true,
-    sortOrder: 1,
-    category: { id: '33333333-3333-3333-3333-333333333301', slug: 'thep', name: 'Thép xây dựng' }
-  },
-  {
-    id: '44444444-4444-4444-4444-444444444402',
-    slug: 'xi-mang-pomihua',
-    name: 'Xi măng Pomihua',
-    shortDescription: 'Độ kết dính hoàn hảo',
-    description: 'Xi măng Pooc lăng hỗn hợp chất lượng cao, mác 30, 40 phù hợp cho đổ bê tông, trát, xây tô, đảm bảo độ kết dính và kháng thấm tốt.',
-    brand: 'Pomihua',
-    specsSummary: 'PCB30 - PCB40',
-    features: ['Đóng bao 50kg, xuất xứ rõ ràng', 'Giao hàng tới chân công trình'],
-    imageUrl: null,
-    featured: true,
-    sortOrder: 2,
-    category: { id: '33333333-3333-3333-3333-333333333302', slug: 'xi-mang', name: 'Xi măng' }
-  }
-]
-
-const mockAdvantages = [
-  { id: '55555555-5555-5555-5555-555555555501', title: 'Uy tín hàng đầu', description: 'Cam kết nguồn hàng chính hãng, minh bạch giá, hợp đồng rõ ràng.', iconKey: 'handshake', sortOrder: 1 },
-  { id: '55555555-5555-5555-5555-555555555502', title: 'Giá cạnh tranh', description: 'Chiết khấu cao cho nhà thầu, đại lý, hỗ trợ giá theo lô lớn.', iconKey: 'tags', sortOrder: 2 },
-  { id: '55555555-5555-5555-5555-555555555503', title: 'Giao hàng nhanh', description: 'Đội xe vận tải chuyên nghiệp, giao đúng hẹn trong 24-48h.', iconKey: 'truck', sortOrder: 3 },
-  { id: '55555555-5555-5555-5555-555555555504', title: 'Nguồn hàng ổn định', description: 'Kho bãi rộng, liên kết trực tiếp nhà máy, không gián đoạn cung ứng.', iconKey: 'warehouse', sortOrder: 4 }
-]
-
-const mockContact = {
-  addressOld: 'Thôn Gò Pháo, Xã Hợp Thịnh, Huyện Hiệp Hoà, Bắc Giang',
-  addressNew: 'Thôn Gò Pháo, Xã Hợp Thịnh, Huyện Hiệp Hoà, Bắc Ninh',
-  addressNote: 'Theo đăng ký kinh doanh',
-  hotlineDisplay: '0393.284.994',
-  hotlineE164: '+84393284994',
-  hotlineContactName: 'Nguyễn Hải Yến',
-  email: 'thanhan.bg@vatlieuxd.com',
-  zaloUrl: 'https://zalo.me/0393284994',
-  facebookUrl: 'https://facebook.com',
-  businessHoursWeekday: 'Thứ 2 - Thứ 7: 7:30 - 17:30',
-  businessHoursWeekend: 'Chủ nhật & lễ: Tư vấn qua hotline',
-  mapEmbedUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4800.592803124682!2d105.9060136!3d21.327291!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351b00de267aab%3A0xf9bdf6e4539848fd!2sC%C3%B4ng%20Ty%20TNHH%20Thanh%20An%20B%E1%BA%AFc%20Giang!5e1!3m2!1svi!2s!4v1775215410461!5m2!1svi!2s'
+function assert(cond, msg) {
+  if (!cond) fail(msg)
 }
 
-console.log('=== VERIFICATION RUN START ===')
+async function quoteCountViaApiProbe() {
+  // Prefer DB count helper if present; else count via side-effect free approach:
+  // create unique marker and ensure GET list isn't public — we only verify POST 201 + JDBC file.
+  return null
+}
 
-async function runTests() {
-  const logLines = []
-  function log(msg) {
-    console.log(msg)
-    logLines.push(msg)
-  }
-
-  // --- Test 1: Full Load Verification (Desktop 1440, Tablet 768, Mobile 390) ---
-  log('\n--- TEST SUITE 1: FULL LOAD VERIFICATION ---')
-  for (const viewport of [{ name: 'desktop', width: 1440 }, { name: 'tablet', width: 768 }, { name: 'mobile', width: 390 }]) {
-    const dom = new JSDOM(`<!DOCTYPE html><html><body><div id="app"></div></body></html>`, {
-      url: 'http://localhost:5173/',
-      pretendToBeVisual: true
-    })
-
-    // Setup global browser objects
-    global.window = dom.window
-    global.document = dom.window.document
-    global.navigator = dom.window.navigator
-
-    // Verify Mobile Hotline button visibility:
-    // In HeaderNav: <a v-if="contact?.hotlineDisplay" class="flex md:hidden ...">...0393.284.994...</a>
-    const mobileHotlineRendered = mockContact.hotlineDisplay ? true : false
-    log(`[${viewport.name}] width=${viewport.width} brand=true product=true contact=true hotlineOutsideDrawer=${mobileHotlineRendered} consoleErrors=0`)
-  }
-
-  // --- Test 2: Hero CTA Duplicate Check ---
-  log('\n--- TEST SUITE 2: HERO CTA DUPLICATE CHECK ---')
-  // Verify Hero has 2 distinct buttons:
-  // Button 1: "Xem sản phẩm" (href="#products")
-  // Button 2: "Yêu cầu báo giá" (emits openQuote)
-  const heroBtn1Text = 'Xem sản phẩm'
-  const heroBtn2Text = mockSite.heroCtaLabel || 'Yêu cầu báo giá'
-  const isDuplicate = heroBtn1Text.toLowerCase().includes('báo giá') && heroBtn2Text.toLowerCase().includes('báo giá')
-  log(`Hero CTA 1: "${heroBtn1Text}" (Explore products)`)
-  log(`Hero CTA 2: "${heroBtn2Text}" (Open quote modal)`)
-  log(`CTA Duplicate check: ${isDuplicate ? 'FAIL - Duplicate' : 'PASS - Distinct actions'}`)
-
-  // --- Test 3: Mobile Hotline First Paint Check ---
-  log('\n--- TEST SUITE 3: MOBILE HOTLINE ACCESSIBILITY ---')
-  const mobileHotlineText = mockContact.hotlineDisplay
-  log(`Mobile header contains hotline: "${mobileHotlineText}" outside drawer (first-paint visible without opening menu): PASS`)
-
-  // --- Test 4: Partial Failure Simulation & Independent Recovery ---
-  log('\n--- TEST SUITE 4: PARTIAL API FAILURE & INDEPENDENT RETRY (/products 500) ---')
-  let productsError = null
-  let productsData = []
-
-  // Step 4.1: Simulate failure on /products
-  log('Step 4.1: Initiating request with simulated /products failure (HTTP 500)...')
-  const siteLoaded = !!mockSite
-  const companyLoaded = !!mockCompany
-  const contactLoaded = !!mockContact
-  const advantagesLoaded = mockAdvantages.length > 0
-
-  // /products fails
-  productsError = {
-    status: 500,
-    code: 'INTERNAL_ERROR',
-    message: 'Mô phỏng lỗi máy chủ: Không thể tải danh mục sản phẩm (HTTP 500).'
-  }
-  productsData = []
-
-  log(`Site section loaded: ${siteLoaded} (Hero rendered)`)
-  log(`Company section loaded: ${companyLoaded} (About rendered)`)
-  log(`Advantages section loaded: ${advantagesLoaded} (Advantages rendered)`)
-  log(`Contact section loaded: ${contactLoaded} (Contact & map rendered)`)
-  log(`Products section status: ERROR detected: "${productsError.message}"`)
-  log(`Products section UI: StatusAlert visible with retry button "Thử tải lại sản phẩm"`)
-  log(`Partial failure isolation verified: Other sections remain intact and operational: PASS`)
-
-  // Step 4.2: User clicks Retry ("Thử tải lại sản phẩm")
-  log('\nStep 4.2: Triggering retry on ProductsSection...')
-  // Server recovers
-  productsError = null
-  productsData = [...mockProducts]
-  log(`Products fetched successfully: count=${productsData.length}`)
-  log(`Products rendered: ${productsData.map(p => p.name).join(', ')}`)
-  log(`Independent retry recovery verified: PASS`)
-
-  // --- Test 5: Quote Submission & Validation ---
-  log('\n--- TEST SUITE 5: QUOTE SUBMISSION & DB SIMULATION ---')
-  const testQuote = {
-    fullName: 'Nguyễn Văn A',
-    phone: '0393284994',
-    email: 'khachhang@example.com',
-    companyName: 'Công ty XD Thắng Lợi',
-    productInterest: 'Thép Hòa Phát',
-    message: 'Xin báo giá 50 tấn thép D16 giao tại KCN Đình Trám',
-    sourcePage: '/#quote',
-    website: ''
-  }
-
-  // Validate payload rules
-  const validName = testQuote.fullName.length >= 2
-  const validPhone = testQuote.phone.length >= 8
-  const validMessage = testQuote.message.length >= 5
-  const honeypotOk = testQuote.website === ''
-
-  if (validName && validPhone && validMessage && honeypotOk) {
-    const createdQuote = {
-      id: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-      status: 'NEW',
-      createdAt: new Date().toISOString()
+function countQuotesInDb() {
+  const jdbc =
+    process.env.PG_JDBC_JAR ||
+    `${process.env.HOME}/.m2/repository/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar`
+  const javaSrc = `
+import java.sql.*;
+public class CountQuotesE2E {
+  public static void main(String[] a) throws Exception {
+    try (Connection c = DriverManager.getConnection(
+        System.getenv().getOrDefault("DATABASE_URL_JDBC", "jdbc:postgresql://127.0.0.1:5432/thanhan"),
+        System.getenv().getOrDefault("DATABASE_USERNAME", "thanhan"),
+        System.getenv().getOrDefault("DATABASE_PASSWORD", "thanhan"));
+         Statement s = c.createStatement();
+         ResultSet rs = s.executeQuery("SELECT count(*) FROM quote_requests")) {
+      rs.next();
+      System.out.print(rs.getInt(1));
     }
-    log(`Quote submission accepted: HTTP 201 Created`)
-    log(`Created Reference ID: ${createdQuote.id} (Status: ${createdQuote.status})`)
-    log(`UI Success Alert: "Yêu cầu báo giá của bạn đã được tiếp nhận thành công! Mã tham chiếu: ${createdQuote.id.slice(0, 8)}"`)
-    log(`Quote flow test: PASS`)
-  } else {
-    log(`Quote flow test: FAIL`)
   }
-
-  log('\n=== ALL BROWSER & INTEGRATION TESTS PASSED ===')
-
-  fs.writeFileSync('./verification-results.log', logLines.join('\n') + '\n', 'utf8')
-  console.log('Log written to ./verification-results.log')
+}
+`
+  const tmp = path.join(SHOT_DIR, '_jdbc')
+  fs.mkdirSync(tmp, { recursive: true })
+  fs.writeFileSync(path.join(tmp, 'CountQuotesE2E.java'), javaSrc)
+  const javac = spawnSync('javac', ['-cp', jdbc, 'CountQuotesE2E.java'], { cwd: tmp, encoding: 'utf8' })
+  if (javac.status !== 0) {
+    log(`WARN: javac failed: ${javac.stderr}`)
+    return null
+  }
+  const run = spawnSync('java', ['-cp', `${tmp}:${jdbc}`, 'CountQuotesE2E'], { encoding: 'utf8' })
+  if (run.status !== 0) {
+    log(`WARN: java CountQuotes failed: ${run.stderr}`)
+    return null
+  }
+  return Number(run.stdout.trim())
 }
 
-runTests().catch(console.error)
+async function launchBrowser() {
+  const opts = {
+    headless: true,
+    args: ['--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage'],
+  }
+  if (fs.existsSync(CHROME_PATH)) opts.executablePath = CHROME_PATH
+  return chromium.launch(opts)
+}
+
+async function waitForApp(page) {
+  await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 60000 })
+  await page.waitForSelector('#app', { timeout: 15000 })
+  // Brand from API seed
+  await page.waitForTimeout(800)
+}
+
+async function assertNoSevereConsole(consoleErrors, label) {
+  const severe = consoleErrors.filter(
+    (t) => !/Download the Vue Devtools|\[vite\]|favicon/i.test(t)
+  )
+  assert(severe.length === 0, `${label}: console errors: ${severe.slice(0, 3).join(' | ')}`)
+}
+
+async function assertNoHorizontalOverflow(page, label) {
+  const overflow = await page.evaluate(() => {
+    const doc = document.documentElement
+    return {
+      scrollWidth: doc.scrollWidth,
+      clientWidth: doc.clientWidth,
+    }
+  })
+  assert(
+    overflow.scrollWidth <= overflow.clientWidth + 1,
+    `${label}: horizontal overflow scrollWidth=${overflow.scrollWidth} clientWidth=${overflow.clientWidth}`
+  )
+}
+
+async function expectVisibleText(page, text, label) {
+  const visible = await page.getByText(text, { exact: false }).first().isVisible().catch(() => false)
+  assert(visible, `${label}: expected visible text "${text}"`)
+}
+
+function retryControl(page) {
+  return page.getByRole('button', { name: /Thử tải lại|Thử lại|tải lại/i })
+}
+
+async function suiteViewports(browser) {
+  log('=== SUITE: viewports 1440 / 768 / 390 ===')
+  const viewports = [
+    { name: 'desktop', width: 1440, height: 900 },
+    { name: 'tablet', width: 768, height: 1024 },
+    { name: 'mobile', width: 390, height: 844 },
+  ]
+  for (const vp of viewports) {
+    const context = await browser.newContext({ viewport: { width: vp.width, height: vp.height } })
+    const page = await context.newPage()
+    const consoleErrors = []
+    page.on('console', (m) => {
+      if (m.type() === 'error') consoleErrors.push(m.text())
+    })
+    page.on('pageerror', (e) => consoleErrors.push(String(e)))
+
+    await waitForApp(page)
+    await expectVisibleText(page, 'Thanh An Bắc Giang', `${vp.name} brand`)
+    await expectVisibleText(page, 'Thép Hòa Phát', `${vp.name} product`)
+    // Hotline may be abbreviated; match digits
+    const hotlineVisible = await page.getByText(/0393/).first().isVisible().catch(() => false)
+    assert(hotlineVisible, `${vp.name}: hotline 0393 not visible on first paint`)
+    await assertNoHorizontalOverflow(page, vp.name)
+    await assertNoSevereConsole(consoleErrors, vp.name)
+    await page.screenshot({ path: path.join(SHOT_DIR, `${vp.name}-home.png`), fullPage: true })
+    log(`[${vp.name}] viewport OK brand/product/hotline`)
+    await context.close()
+  }
+}
+
+async function suitePartialFailure(browser, endpointPath, sectionHint) {
+  log(`=== SUITE: partial failure ${endpointPath} ===`)
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+
+  // Abort only the targeted API path (fault injection in runner)
+  await page.route(`**${endpointPath}**`, async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          timestamp: new Date().toISOString(),
+          status: 500,
+          error: 'Internal Server Error',
+          code: 'INTERNAL_ERROR',
+          message: `Simulated failure for ${endpointPath}`,
+          path: endpointPath,
+          details: [],
+        }),
+      })
+    } else {
+      await route.continue()
+    }
+  })
+
+  await waitForApp(page)
+
+  // Other sections should still show seeded content when only one endpoint fails
+  if (!endpointPath.includes('/site') || endpointPath.includes('advantages')) {
+    // company/contact may still load
+  }
+  if (endpointPath.includes('/products')) {
+    await expectVisibleText(page, 'Thanh An Bắc Giang', 'products-fail keeps brand')
+  }
+
+  const hasRetry = (await retryControl(page).count()) > 0
+  const hasErrorCopy = await page
+    .getByText(/Không thể tải|lỗi|HTTP_NETWORK_ERROR|INTERNAL_ERROR|Simulated failure|Thông báo kết nối/i)
+    .first()
+    .isVisible()
+    .catch(() => false)
+
+  assert(
+    hasRetry || hasErrorCopy,
+    `${endpointPath}: expected section/global error UI and/or retry control (${sectionHint})`
+  )
+
+  await page.screenshot({
+    path: path.join(SHOT_DIR, `error-${endpointPath.replace(/\W+/g, '_')}.png`),
+    fullPage: true,
+  })
+
+  // Remove fault injection — retry must hit real API
+  await page.unroute(`**${endpointPath}**`)
+  if (hasRetry) {
+    await retryControl(page).first().click()
+    await page.waitForTimeout(2000)
+  } else {
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.waitForTimeout(1000)
+  }
+
+  // After recovery, products/brand should be healthy for products case
+  if (endpointPath.includes('/products')) {
+    await expectVisibleText(page, 'Thép Hòa Phát', 'products recovered')
+  }
+  if (endpointPath.includes('/company') || endpointPath === '/api/v1/site') {
+    await expectVisibleText(page, 'Thanh An Bắc Giang', 'site/company recovered')
+  }
+
+  await page.screenshot({
+    path: path.join(SHOT_DIR, `retry-${endpointPath.replace(/\W+/g, '_')}.png`),
+    fullPage: true,
+  })
+  log(`[partial] ${endpointPath} error UI + recovery exercised`)
+  await context.close()
+}
+
+async function suiteQuote(browser) {
+  log('=== SUITE: quote request persists to DB ===')
+  const before = countQuotesInDb()
+  log(`quote_requests before=${before}`)
+
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+  const page = await context.newPage()
+  await waitForApp(page)
+
+  const openBtn = page.getByRole('button', { name: /báo giá|Yêu cầu/i }).first()
+  assert((await openBtn.count()) > 0, 'quote CTA missing')
+  await openBtn.click()
+  await page.waitForTimeout(500)
+
+  const marker = `E2E-QUOTE-${Date.now()}`
+  const inputs = page.locator('input:visible')
+  const n = await inputs.count()
+  assert(n >= 2, `quote form inputs expected >=2 got ${n}`)
+  await inputs.nth(0).fill('Nguyen Van Harness')
+  await inputs.nth(1).fill('0393284994')
+  const ta = page.locator('textarea:visible').first()
+  assert((await ta.count()) > 0, 'quote message textarea missing')
+  await ta.fill(`${marker} xin bao gia thep D16`)
+
+  const submit = page.locator('button').filter({ hasText: /Gửi/i }).first()
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('/api/v1/quote-requests') && r.request().method() === 'POST',
+      { timeout: 15000 }
+    ),
+    submit.click(),
+  ])
+  assert(response.status() === 201, `quote POST expected 201 got ${response.status()}`)
+  const body = await response.json()
+  assert(!!body.id, 'quote response missing id')
+  log(`quote created id=${body.id}`)
+
+  await page.waitForTimeout(800)
+  await page.screenshot({ path: path.join(SHOT_DIR, 'desktop-quote-result.png') })
+
+  const after = countQuotesInDb()
+  log(`quote_requests after=${after}`)
+  if (before != null && after != null) {
+    assert(after > before, `DB quote count did not increase (${before} -> ${after})`)
+  } else {
+    fail('Could not verify quote persistence via JDBC count')
+  }
+
+  await context.close()
+}
+
+async function suiteApiHealth() {
+  log('=== SUITE: direct API health ===')
+  for (const p of ['/site', '/company', '/categories', '/products', '/site/advantages', '/contact']) {
+    const res = await fetch(`${API_BASE}${p}`)
+    assert(res.ok, `GET ${p} -> ${res.status}`)
+  }
+}
+
+async function main() {
+  fs.mkdirSync(SHOT_DIR, { recursive: true })
+  log(`BASE_URL=${BASE_URL} API_BASE=${API_BASE} SHOT_DIR=${SHOT_DIR}`)
+
+  // Smoke: app reachable
+  try {
+    const r = await fetch(BASE_URL)
+    assert(r.ok, `BASE_URL not reachable: ${BASE_URL} -> ${r.status}`)
+  } catch (e) {
+    fail(`BASE_URL fetch failed: ${e.message}`)
+    finish()
+    return
+  }
+
+  await suiteApiHealth()
+
+  const browser = await launchBrowser()
+  try {
+    await suiteViewports(browser)
+    // Independent endpoint faults
+    await suitePartialFailure(browser, '/api/v1/products', 'products')
+    await suitePartialFailure(browser, '/api/v1/site/advantages', 'advantages')
+    await suitePartialFailure(browser, '/api/v1/categories', 'categories')
+    await suitePartialFailure(browser, '/api/v1/site', 'site')
+    await suiteQuote(browser)
+  } finally {
+    await browser.close()
+  }
+
+  finish()
+}
+
+function finish() {
+  fs.writeFileSync(path.join(SHOT_DIR, 'verify-e2e.log'), logLines.join('\n') + '\n')
+  if (failures.length) {
+    log(`=== RESULT: FAIL (${failures.length}) ===`)
+    for (const f of failures) log(` - ${f}`)
+    process.exit(1)
+  }
+  log('=== RESULT: PASS ===')
+  process.exit(0)
+}
+
+main().catch((e) => {
+  fail(`unhandled: ${e.stack || e}`)
+  finish()
+})
