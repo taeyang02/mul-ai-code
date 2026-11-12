@@ -38,6 +38,12 @@ const emit = defineEmits<{
         </div>
       </div>
 
+      <!-- Empty State -->
+      <div v-else-if="products.length === 0" class="text-center py-12 bg-white rounded-2xl border border-gray-200 p-8 card-shadow">
+        <i class="fas fa-box-open text-4xl text-gray-400 mb-3"></i>
+        <p class="text-gray-600 font-medium">Hiện đang cập nhật danh mục sản phẩm từ hệ thống...</p>
+      </div>
+
       <!-- Products Grid -->
       <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
         <div
@@ -54,6 +60,7 @@ const emit = defineEmits<{
               :class="product.iconClass || 'fas fa-industry'"
               class="text-7xl opacity-80 group-hover:scale-110 transition-transform duration-300"
             ></i>
+            <!-- Only render verified badge if provided -->
             <div
               v-if="product.badge"
               class="absolute bottom-3 left-4 bg-black/50 backdrop-blur-sm px-3.5 py-1 rounded-full text-white text-xs font-semibold border border-white/20"
@@ -70,7 +77,7 @@ const emit = defineEmits<{
                   <h3 class="text-2xl font-bold text-gray-800 group-hover:text-[#1e5a6b] transition">
                     {{ product.name }}
                   </h3>
-                  <p class="text-sm text-[#1e5a6b] font-medium mt-0.5">
+                  <p v-if="product.subTitle" class="text-sm text-[#1e5a6b] font-medium mt-0.5">
                     {{ product.subTitle }}
                   </p>
                 </div>
@@ -81,7 +88,7 @@ const emit = defineEmits<{
                 {{ product.description }}
               </p>
 
-              <!-- Highlights list -->
+              <!-- Highlights list (only verified bullet points) -->
               <ul v-if="product.highlights && product.highlights.length" class="mt-4 space-y-2 text-gray-600 text-sm">
                 <li
                   v-for="(hl, idx) in product.highlights"

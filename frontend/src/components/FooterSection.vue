@@ -21,9 +21,9 @@ defineProps<{
           <p class="text-sm mt-3.5 text-gray-400 leading-relaxed">
             Đồng hành cùng mọi công trình từ dân dụng đến công nghiệp với chất lượng và uy tín hàng đầu tại Bắc Giang và các tỉnh miền Bắc.
           </p>
-          <div class="mt-4 text-xs text-gray-400">
+          <div v-if="companyInfo?.taxCode" class="mt-4 text-xs text-gray-400">
             <span>Mã số thuế: </span>
-            <strong class="text-gray-200">{{ companyInfo?.taxCode || '2400123456' }}</strong>
+            <strong class="text-gray-200">{{ companyInfo.taxCode }}</strong>
           </div>
         </div>
 
@@ -39,21 +39,24 @@ defineProps<{
           </ul>
         </div>
 
-        <!-- Col 3: Hours & Socials -->
+        <!-- Col 3: Hours & Socials (only rendered if verified) -->
         <div>
           <h4 class="font-bold text-white mb-4 text-base">Giờ làm việc & Hỗ trợ</h4>
-          <p class="text-sm text-gray-300">
+          <p v-if="companyInfo?.workingHours" class="text-sm text-gray-300">
             <i class="fas fa-clock mr-2 text-emerald-400"></i>
-            {{ companyInfo?.workingHours || 'Thứ 2 - Thứ 7: 7:30 - 17:30' }}
+            {{ companyInfo.workingHours }}
           </p>
-          <p class="text-sm text-gray-300 mt-2">
+          <p v-if="companyInfo?.weekendHours" class="text-sm text-gray-300 mt-2">
             <i class="fas fa-headset mr-2 text-emerald-400"></i>
-            {{ companyInfo?.weekendHours || 'Chủ nhật & lễ: Tư vấn qua hotline' }}
+            {{ companyInfo.weekendHours }}
           </p>
 
-          <div class="flex items-center gap-4 mt-5 text-xl">
+          <div
+            v-if="companyInfo?.socialLinks?.facebook || companyInfo?.socialLinks?.zalo || companyInfo?.socialLinks?.tiktok"
+            class="flex items-center gap-4 mt-5 text-xl"
+          >
             <a
-              v-if="companyInfo?.socialLinks?.facebook"
+              v-if="companyInfo.socialLinks.facebook"
               :href="companyInfo.socialLinks.facebook"
               target="_blank"
               rel="noopener noreferrer"
@@ -63,7 +66,7 @@ defineProps<{
               <i class="fab fa-facebook-f"></i>
             </a>
             <a
-              v-if="companyInfo?.socialLinks?.zalo"
+              v-if="companyInfo.socialLinks.zalo"
               :href="companyInfo.socialLinks.zalo"
               target="_blank"
               rel="noopener noreferrer"
@@ -73,7 +76,7 @@ defineProps<{
               Zalo
             </a>
             <a
-              v-if="companyInfo?.socialLinks?.tiktok"
+              v-if="companyInfo.socialLinks.tiktok"
               :href="companyInfo.socialLinks.tiktok"
               target="_blank"
               rel="noopener noreferrer"

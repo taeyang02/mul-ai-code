@@ -18,8 +18,11 @@ const emit = defineEmits<{
     <div class="container mx-auto px-5 md:px-8 py-16 md:py-24 lg:py-28 relative z-10">
       <div class="max-w-3xl">
         <!-- Tagline badge -->
-        <span class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#1e5a6b]/10 text-[#1e5a6b] rounded-full text-sm font-semibold mb-5 border border-[#1e5a6b]/20">
-          <span>🏗️</span> {{ companyInfo?.tagline || 'Đối tác chiến lược toàn miền Bắc' }}
+        <span
+          v-if="companyInfo?.tagline"
+          class="inline-flex items-center gap-1.5 px-3.5 py-1 bg-[#1e5a6b]/10 text-[#1e5a6b] rounded-full text-sm font-semibold mb-5 border border-[#1e5a6b]/20"
+        >
+          <span>🏗️</span> {{ companyInfo.tagline }}
         </span>
 
         <!-- Hero Heading -->
@@ -29,8 +32,11 @@ const emit = defineEmits<{
         </h1>
 
         <!-- Slogan Description -->
-        <p class="text-lg md:text-xl text-gray-700 mt-6 leading-relaxed border-l-4 border-[#2c7a5e] pl-5 max-w-2xl">
-          {{ companyInfo?.slogan || 'Chuyên phân phối Thép Hòa Phát, Xi măng Pomihua hàng đầu Bắc Giang. Uy tín - Giá cạnh tranh - Giao hàng tận công trình.' }}
+        <p
+          v-if="companyInfo?.slogan"
+          class="text-lg md:text-xl text-gray-700 mt-6 leading-relaxed border-l-4 border-[#2c7a5e] pl-5 max-w-2xl"
+        >
+          {{ companyInfo.slogan }}
         </p>
 
         <!-- CTAs -->
@@ -51,15 +57,25 @@ const emit = defineEmits<{
           </button>
         </div>
 
-        <!-- Badges -->
-        <div class="flex flex-wrap items-center gap-6 mt-10 text-sm font-medium text-gray-700">
-          <div class="flex items-center gap-1.5 bg-white/70 backdrop-blur px-3 py-1.5 rounded-md border border-gray-200 shadow-xs">
+        <!-- Badges (only rendered when verified by Backend) -->
+        <div
+          v-if="companyInfo?.stats?.activeSince || companyInfo?.stats?.supportTime"
+          class="flex flex-wrap items-center gap-6 mt-10 text-sm font-medium text-gray-700"
+        >
+          <div
+            v-if="companyInfo.stats.activeSince"
+            class="flex items-center gap-1.5 bg-white/70 backdrop-blur px-3 py-1.5 rounded-md border border-gray-200 shadow-xs"
+          >
             <i class="fas fa-check-circle text-[#2c7a5e]"></i>
-            <span>{{ companyInfo?.stats?.activeSince || 'Hoạt động từ 2015' }}</span>
+            <span>{{ companyInfo.stats.activeSince }}</span>
           </div>
-          <div class="flex items-center gap-1.5 bg-white/70 backdrop-blur px-3 py-1.5 rounded-md border border-gray-200 shadow-xs">
+
+          <div
+            v-if="companyInfo.stats.supportTime"
+            class="flex items-center gap-1.5 bg-white/70 backdrop-blur px-3 py-1.5 rounded-md border border-gray-200 shadow-xs"
+          >
             <i class="fas fa-truck-fast text-[#2c7a5e]"></i>
-            <span>{{ companyInfo?.stats?.supportTime || 'Giao nhanh 24/7' }}</span>
+            <span>{{ companyInfo.stats.supportTime }}</span>
           </div>
         </div>
       </div>

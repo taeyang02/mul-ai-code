@@ -36,58 +36,58 @@ const emit = defineEmits<{
             </div>
 
             <div class="space-y-5">
-              <!-- Old Address -->
-              <div class="flex items-start gap-4">
+              <!-- Old Address (only rendered if verified and provided) -->
+              <div v-if="companyInfo?.oldAddress" class="flex items-start gap-4">
                 <i class="fas fa-map-marker-alt text-xl text-[#1e5a6b] mt-1"></i>
                 <div>
                   <span class="font-bold text-gray-800 text-sm block">Địa chỉ kinh doanh (cũ):</span>
                   <span class="text-gray-700 text-sm">
-                    {{ companyInfo?.oldAddress || 'Thôn Gò Pháo, Xã Hợp Thịnh, Huyện Hiệp Hoà, Bắc Giang' }}
+                    {{ companyInfo.oldAddress }}
                   </span>
                 </div>
               </div>
 
-              <!-- New Address -->
-              <div class="flex items-start gap-4">
+              <!-- New Address (only rendered if verified and provided) -->
+              <div v-if="companyInfo?.newAddress" class="flex items-start gap-4">
                 <i class="fas fa-file-invoice-dollar text-xl text-[#1e5a6b] mt-1"></i>
                 <div>
                   <span class="font-bold text-gray-800 text-sm block">Địa chỉ kinh doanh (mới):</span>
                   <span class="text-gray-700 text-sm">
-                    {{ companyInfo?.newAddress || 'Thôn Gò Pháo, Xã Hợp Thịnh, Huyện Hiệp Hoà, Bắc Ninh' }}
+                    {{ companyInfo.newAddress }}
                   </span>
-                  <span class="text-xs text-gray-500 block mt-0.5">
-                    ({{ companyInfo?.registrationNote || 'Theo đăng ký kinh doanh' }})
+                  <span v-if="companyInfo.registrationNote" class="text-xs text-gray-500 block mt-0.5">
+                    ({{ companyInfo.registrationNote }})
                   </span>
                 </div>
               </div>
 
-              <!-- Hotline -->
-              <div class="flex items-start gap-4">
+              <!-- Hotline (only rendered if verified and provided) -->
+              <div v-if="companyInfo?.hotline" class="flex items-start gap-4">
                 <i class="fas fa-phone-alt text-xl text-[#1e5a6b] mt-1"></i>
                 <div>
                   <span class="font-bold text-gray-800 text-sm block">Hotline tư vấn 24/7:</span>
                   <a
-                    :href="'tel:' + (companyInfo?.hotline || '0393284994')"
+                    :href="'tel:' + companyInfo.hotline"
                     class="text-[#1e5a6b] font-bold text-lg hover:underline"
                   >
-                    {{ companyInfo?.hotline || '0393.284.994' }}
+                    {{ companyInfo.hotline }}
                   </a>
-                  <span class="text-gray-600 text-sm ml-1">
-                    ({{ companyInfo?.hotlineConsultant || 'Nguyễn Hải Yến' }})
+                  <span v-if="companyInfo.hotlineConsultant" class="text-gray-600 text-sm ml-1">
+                    ({{ companyInfo.hotlineConsultant }})
                   </span>
                 </div>
               </div>
 
-              <!-- Email -->
-              <div class="flex items-start gap-4">
+              <!-- Email (only rendered if verified and provided) -->
+              <div v-if="companyInfo?.email" class="flex items-start gap-4">
                 <i class="fas fa-envelope text-xl text-[#1e5a6b] mt-1"></i>
                 <div>
                   <span class="font-bold text-gray-800 text-sm block">Email:</span>
                   <a
-                    :href="'mailto:' + (companyInfo?.email || 'thanhan.bg@vatlieuxd.com')"
+                    :href="'mailto:' + companyInfo.email"
                     class="text-[#1e5a6b] text-sm break-all hover:underline"
                   >
-                    {{ companyInfo?.email || 'thanhan.bg@vatlieuxd.com' }}
+                    {{ companyInfo.email }}
                   </a>
                 </div>
               </div>
@@ -110,8 +110,8 @@ const emit = defineEmits<{
           </div>
         </div>
 
-        <!-- Google Maps Embed -->
-        <div class="bg-white rounded-2xl card-shadow p-6 md:p-8 flex flex-col">
+        <!-- Google Maps Embed (only rendered if URL provided) -->
+        <div v-if="companyInfo?.mapEmbedUrl" class="bg-white rounded-2xl card-shadow p-6 md:p-8 flex flex-col">
           <div class="flex items-center gap-2 mb-5">
             <i class="fas fa-map-marked-alt text-2xl text-[#1e5a6b]"></i>
             <h3 class="text-2xl font-bold text-gray-800">Bản đồ công ty</h3>
@@ -119,7 +119,7 @@ const emit = defineEmits<{
           
           <div class="w-full flex-grow min-h-[320px] overflow-hidden rounded-xl border border-gray-200 shadow-inner">
             <iframe
-              :src="companyInfo?.mapEmbedUrl || 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4800.592803124682!2d105.9060136!3d21.327291!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351b00de267aab%3A0xf9bdf6e4539848fd!2sC%C3%B4ng%20Ty%20TNHH%20Thanh%20An%20B%E1%BA%AFc%20Giang!5e1!3m2!1svi!2s!4v1775215410461!5m2!1svi!2s'"
+              :src="companyInfo.mapEmbedUrl"
               width="100%"
               height="100%"
               style="border:0; min-height: 320px;"
