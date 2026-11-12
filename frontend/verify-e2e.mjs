@@ -60,26 +60,41 @@ function javaBin(name) {
   return name
 }
 
+function spawnJavaTool(binName, args, opts = {}) {
+  const attempts = 3
+  let last = null
+  for (let i = 0; i < attempts; i++) {
+    last = spawnSync(javaBin(binName), args, {
+      encoding: 'utf8',
+      env: process.env,
+      ...opts,
+    })
+    const errMsg = String(last.stderr || last.error || '')
+    if (last.status === 0) return last
+    if (!/EAGAIN|unable to create native thread|pthread_create failed/i.test(errMsg) && last.status !== null) {
+      return last
+    }
+    spawnSync('sleep', [`${0.75 * (i + 1)}`], { encoding: 'utf8' })
+  }
+  return last
+}
+
 function runJdbcQuery(javaClassName, javaSource) {
   const jdbc = jdbcClasspath()
   const tmp = path.join(SHOT_DIR, '_jdbc')
   fs.mkdirSync(tmp, { recursive: true })
   fs.writeFileSync(path.join(tmp, `${javaClassName}.java`), javaSource)
-  const javac = spawnSync(javaBin('javac'), ['-cp', jdbc, `${javaClassName}.java`], {
-    cwd: tmp,
-    encoding: 'utf8',
-    env: process.env,
-  })
-  if (javac.status !== 0) {
-    log(`WARN: javac failed: ${javac.stderr || javac.stdout || javac.error}`)
-    return null
+  const classFile = path.join(tmp, `${javaClassName}.class`)
+  if (!fs.existsSync(classFile)) {
+    const javac = spawnJavaTool('javac', ['-cp', jdbc, `${javaClassName}.java`], { cwd: tmp })
+    if (!javac || javac.status !== 0) {
+      log(`WARN: javac failed: ${(javac && (javac.stderr || javac.stdout || javac.error)) || 'unknown'}`)
+      return null
+    }
   }
-  const run = spawnSync(javaBin('java'), ['-cp', `${tmp}:${jdbc}`, javaClassName], {
-    encoding: 'utf8',
-    env: process.env,
-  })
-  if (run.status !== 0) {
-    log(`WARN: java ${javaClassName} failed: ${run.stderr || run.stdout || run.error}`)
+  const run = spawnJavaTool('java', ['-cp', `${tmp}:${jdbc}`, javaClassName])
+  if (!run || run.status !== 0) {
+    log(`WARN: java ${javaClassName} failed: ${(run && (run.stderr || run.stdout || run.error)) || 'unknown'}`)
     return null
   }
   return run.stdout.trim()
