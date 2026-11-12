@@ -44,13 +44,13 @@ const emit = defineEmits<{
           {{ site.heroSubtitle }}
         </p>
 
-        <!-- CTAs -->
+        <!-- CTAs: Distinct actions without duplicate quote buttons -->
         <div class="flex flex-wrap gap-4 mt-8">
           <a
             href="#products"
             class="btn-primary text-white px-7 py-3.5 rounded-lg font-semibold shadow-md flex items-center gap-2"
           >
-            <i class="fas fa-arrow-right"></i> {{ site?.heroCtaLabel || 'Xem sản phẩm' }}
+            <i class="fas fa-arrow-right"></i> Xem sản phẩm
           </a>
 
           <button
@@ -58,7 +58,7 @@ const emit = defineEmits<{
             @click="emit('openQuote')"
             class="border-2 border-[#1e5a6b] text-[#1e5a6b] bg-white/80 hover:bg-[#1e5a6b] hover:text-white px-7 py-3.5 rounded-lg font-semibold transition-all shadow-sm flex items-center gap-2"
           >
-            <i class="fas fa-phone-alt"></i> Nhận báo giá
+            <i class="fas fa-file-invoice-dollar"></i> {{ site?.heroCtaLabel || 'Yêu cầu báo giá' }}
           </button>
         </div>
 

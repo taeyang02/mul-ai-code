@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import HeaderNav from '@/components/HeaderNav.vue'
 import HeroSection from '@/components/HeroSection.vue'
 import AboutSection from '@/components/AboutSection.vue'
@@ -16,9 +16,11 @@ import type {
   CategoryResponse,
   ProductResponse,
   AdvantageResponse,
-  ContactResponse
+  ContactResponse,
+  ErrorResponse
 } from '@/types/api'
 
+// Data models
 const site = ref<SiteResponse | null>(null)
 const company = ref<CompanyResponse | null>(null)
 const categories = ref<CategoryResponse[]>([])
@@ -26,12 +28,39 @@ const products = ref<ProductResponse[]>([])
 const advantages = ref<AdvantageResponse[]>([])
 const contact = ref<ContactResponse | null>(null)
 
-const loading = ref(true)
-const apiError = ref<string | null>(null)
+// Granular loading states
+const loadingSite = ref(true)
+const loadingCompany = ref(true)
+const loadingCategories = ref(true)
+const loadingProducts = ref(true)
+const loadingAdvantages = ref(true)
+const loadingContact = ref(true)
 
+// Granular error states (per-section/per-API)
+const errorSite = ref<ErrorResponse | null>(null)
+const errorCompany = ref<ErrorResponse | null>(null)
+const errorProducts = ref<ErrorResponse | null>(null)
+const errorAdvantages = ref<ErrorResponse | null>(null)
+const errorContact = ref<ErrorResponse | null>(null)
+
+// Overall state
 const isQuoteModalOpen = ref(false)
 const selectedProduct = ref<string>('')
 const toastMessage = ref<string | null>(null)
+
+// True only when all critical APIs fail (complete backend outage)
+const allApisFailed = computed(() => {
+  return (
+    !loadingSite.value &&
+    !loadingProducts.value &&
+    !loadingCompany.value &&
+    !loadingContact.value &&
+    !site.value &&
+    !company.value &&
+    products.value.length === 0 &&
+    !contact.value
+  )
+})
 
 function openQuoteModal(productName: string = '') {
   selectedProduct.value = productName
@@ -53,44 +82,90 @@ function showToast(msg: string) {
   }, 4000)
 }
 
-async function loadData() {
-  loading.value = true
-  apiError.value = null
-
+// Granular fetchers allowing isolated retries
+async function fetchSite() {
+  loadingSite.value = true
+  errorSite.value = null
   try {
-    const results = await Promise.allSettled([
-      apiService.getSite(),
-      apiService.getCompany(),
-      apiService.getCategories(),
-      apiService.getProducts(),
-      apiService.getAdvantages(),
-      apiService.getContact(),
-    ])
-
-    if (results[0].status === 'fulfilled') site.value = results[0].value
-    if (results[1].status === 'fulfilled') company.value = results[1].value
-    if (results[2].status === 'fulfilled') categories.value = results[2].value
-    if (results[3].status === 'fulfilled') products.value = results[3].value.items || []
-    if (results[4].status === 'fulfilled') advantages.value = results[4].value
-    if (results[5].status === 'fulfilled') contact.value = results[5].value
-
-    // Check if all failed
-    const allFailed = results.every(r => r.status === 'rejected')
-    if (allFailed) {
-      const firstError = (results[0] as PromiseRejectedResult).reason
-      const parsed = parseApiError(firstError)
-      apiError.value = `${parsed.message} (${parsed.code}). Đang kết nối tới ${import.meta.env.VITE_API_BASE_URL || '/api/v1'}.`
-    }
+    site.value = await apiService.getSite()
   } catch (err) {
-    const parsed = parseApiError(err)
-    apiError.value = parsed.message
+    errorSite.value = parseApiError(err)
   } finally {
-    loading.value = false
+    loadingSite.value = false
   }
 }
 
+async function fetchCompany() {
+  loadingCompany.value = true
+  errorCompany.value = null
+  try {
+    company.value = await apiService.getCompany()
+  } catch (err) {
+    errorCompany.value = parseApiError(err)
+  } finally {
+    loadingCompany.value = false
+  }
+}
+
+async function fetchCategories() {
+  loadingCategories.value = true
+  try {
+    categories.value = await apiService.getCategories()
+  } catch (err) {
+    console.warn('Failed to fetch categories:', err)
+  } finally {
+    loadingCategories.value = false
+  }
+}
+
+async function fetchProducts() {
+  loadingProducts.value = true
+  errorProducts.value = null
+  try {
+    const page = await apiService.getProducts()
+    products.value = page.items || []
+  } catch (err) {
+    errorProducts.value = parseApiError(err)
+  } finally {
+    loadingProducts.value = false
+  }
+}
+
+async function fetchAdvantages() {
+  loadingAdvantages.value = true
+  errorAdvantages.value = null
+  try {
+    advantages.value = await apiService.getAdvantages()
+  } catch (err) {
+    errorAdvantages.value = parseApiError(err)
+  } finally {
+    loadingAdvantages.value = false
+  }
+}
+
+async function fetchContact() {
+  loadingContact.value = true
+  errorContact.value = null
+  try {
+    contact.value = await apiService.getContact()
+  } catch (err) {
+    errorContact.value = parseApiError(err)
+  } finally {
+    loadingContact.value = false
+  }
+}
+
+function loadAll() {
+  fetchSite()
+  fetchCompany()
+  fetchCategories()
+  fetchProducts()
+  fetchAdvantages()
+  fetchContact()
+}
+
 onMounted(() => {
-  loadData()
+  loadAll()
 })
 </script>
 
@@ -103,14 +178,14 @@ onMounted(() => {
       @open-quote="openQuoteModal('')"
     />
 
-    <!-- Global API Error Notice if server connection fails -->
-    <div v-if="apiError" class="container mx-auto px-5 md:px-8 mt-4">
+    <!-- Global Outage Notice (Only when entire Backend fails) -->
+    <div v-if="allApisFailed" class="container mx-auto px-5 md:px-8 mt-4">
       <StatusAlert
-        type="warning"
-        title="Thông báo kết nối API Backend"
-        :message="apiError"
-        retry-text="Thử tải lại"
-        @retry="loadData"
+        type="error"
+        title="Lỗi kết nối toàn bộ hệ thống Backend"
+        message="Không thể kết nối đến máy chủ Backend. Vui lòng kiểm tra dịch vụ và thử lại."
+        retry-text="Thử tải lại toàn bộ"
+        @retry="loadAll"
       />
     </div>
 
@@ -119,35 +194,41 @@ onMounted(() => {
       <!-- Hero -->
       <HeroSection
         :site="site"
-        :loading="loading"
+        :loading="loadingSite"
         @open-quote="openQuoteModal('')"
       />
 
-      <!-- Giới thiệu -->
+      <!-- Giới thiệu (With isolated error & retry) -->
       <AboutSection
         :company="company"
-        :loading="loading"
+        :loading="loadingCompany"
+        :error="errorCompany"
+        @retry="fetchCompany"
       />
 
-      <!-- Sản phẩm -->
+      <!-- Sản phẩm (With isolated error & retry: preserves other sections when failed) -->
       <ProductsSection
         :products="products"
         :categories="categories"
-        :loading="loading"
+        :loading="loadingProducts"
+        :error="errorProducts"
         @select-product="openQuoteModal"
+        @retry="fetchProducts"
       />
 
       <!-- Lợi thế cạnh tranh -->
       <AdvantagesSection
         :advantages="advantages"
-        :loading="loading"
+        :loading="loadingAdvantages"
       />
 
-      <!-- Liên hệ & Bản đồ -->
+      <!-- Liên hệ & Bản đồ (With isolated error & retry) -->
       <ContactSection
         :contact="contact"
-        :loading="loading"
+        :loading="loadingContact"
+        :error="errorContact"
         @open-quote="openQuoteModal('')"
+        @retry="fetchContact"
       />
     </main>
 

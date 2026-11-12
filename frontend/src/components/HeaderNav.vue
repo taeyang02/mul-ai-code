@@ -20,23 +20,22 @@ function closeMobileMenu() {
 
 <template>
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm transition-all">
-    <div class="container mx-auto px-5 md:px-8 py-4 flex items-center justify-between">
+    <div class="container mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
       <!-- Logo & Company Brand -->
-      <a href="#home" class="flex items-center space-x-2.5 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] rounded-lg p-1">
-        <i class="fas fa-hard-hat text-3xl text-[#1e5a6b]"></i>
+      <a href="#home" class="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] rounded-lg p-1">
+        <i class="fas fa-hard-hat text-2xl md:text-3xl text-[#1e5a6b]"></i>
         <div class="leading-tight">
-          <h1 class="font-extrabold text-lg md:text-xl tracking-tight text-gray-800">
-            {{ site?.brandName || 'THANH AN' }}
+          <h1 class="font-extrabold text-base md:text-xl tracking-tight text-gray-800">
+            {{ site?.brandName || 'Thanh An' }}
           </h1>
-          <p v-if="site?.tagline" class="text-[11px] md:text-xs font-semibold text-[#2c7a5e] tracking-wider uppercase">
+          <p v-if="site?.tagline" class="text-[10px] md:text-xs font-semibold text-[#2c7a5e] tracking-wider uppercase">
             {{ site.tagline }}
           </p>
         </div>
       </a>
 
-      <!-- Desktop Navigation -->
+      <!-- Desktop Navigation (hidden on mobile) -->
       <nav class="hidden md:flex items-center space-x-7 font-medium text-gray-700">
-        <!-- Render nav items dynamically from Site API if available -->
         <template v-if="site?.navItems && site.navItems.length > 0">
           <a
             v-for="(item, idx) in site.navItems"
@@ -47,7 +46,6 @@ function closeMobileMenu() {
             {{ item.label }}
           </a>
         </template>
-        <!-- Default anchor navigation -->
         <template v-else>
           <a href="#home" class="hover:text-[#1e5a6b] transition">Trang chủ</a>
           <a href="#about" class="hover:text-[#1e5a6b] transition">Giới thiệu</a>
@@ -73,15 +71,29 @@ function closeMobileMenu() {
         </a>
       </nav>
 
-      <!-- Mobile Menu Toggle Button -->
-      <button
-        type="button"
-        @click="mobileMenuOpen = !mobileMenuOpen"
-        class="block md:hidden text-2xl text-gray-700 focus:outline-none p-1 rounded-lg hover:bg-gray-100"
-        aria-label="Toggle Navigation Menu"
-      >
-        <i :class="mobileMenuOpen ? 'fas fa-times text-[#1e5a6b]' : 'fas fa-bars'"></i>
-      </button>
+      <!-- Mobile Action Bar (outside drawer on mobile, visible on first paint) -->
+      <div class="flex items-center gap-2 md:hidden">
+        <!-- Direct Hotline Button (Visible directly on mobile viewport 390) -->
+        <a
+          v-if="contact?.hotlineDisplay"
+          :href="'tel:' + (contact.hotlineE164 || contact.hotlineDisplay)"
+          class="flex items-center gap-1.5 bg-[#1e5a6b]/10 text-[#1e5a6b] border border-[#1e5a6b]/20 px-2.5 py-1.5 rounded-lg font-bold text-xs hover:bg-[#1e5a6b] hover:text-white transition"
+          aria-label="Gọi hotline tư vấn"
+        >
+          <i class="fas fa-phone-alt text-xs"></i>
+          <span class="tracking-tight">{{ contact.hotlineDisplay }}</span>
+        </a>
+
+        <!-- Mobile Menu Toggle Button -->
+        <button
+          type="button"
+          @click="mobileMenuOpen = !mobileMenuOpen"
+          class="text-xl text-gray-700 focus:outline-none p-1.5 rounded-lg hover:bg-gray-100 border border-gray-200"
+          aria-label="Toggle Navigation Menu"
+        >
+          <i :class="mobileMenuOpen ? 'fas fa-times text-[#1e5a6b]' : 'fas fa-bars'"></i>
+        </button>
+      </div>
 
       <!-- Mobile Drawer Backdrop & Menu -->
       <div
@@ -144,6 +156,7 @@ function closeMobileMenu() {
             class="w-full block text-center border border-[#1e5a6b] text-[#1e5a6b] py-2.5 rounded-lg font-semibold hover:bg-[#1e5a6b]/5 transition"
           >
             <i class="fas fa-phone-alt mr-2"></i> {{ contact.hotlineDisplay }}
+            <span v-if="contact.hotlineContactName" class="text-xs font-normal">({{ contact.hotlineContactName }})</span>
           </a>
         </div>
       </div>

@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import type { ContactResponse } from '@/types/api'
+import type { ContactResponse, ErrorResponse } from '@/types/api'
+import StatusAlert from '@/components/StatusAlert.vue'
 
 defineProps<{
   contact: ContactResponse | null
   loading?: boolean
+  error?: ErrorResponse | null
 }>()
 
 const emit = defineEmits<{
   (e: 'openQuote'): void
+  (e: 'retry'): void
 }>()
 </script>
 
@@ -25,8 +28,19 @@ const emit = defineEmits<{
         </p>
       </div>
 
+      <!-- Section Error State with Retry -->
+      <div v-if="error" class="max-w-2xl mx-auto my-6">
+        <StatusAlert
+          type="error"
+          title="Lỗi tải thông tin liên hệ"
+          :message="error.message || 'Không thể lấy thông tin liên hệ từ máy chủ.'"
+          retry-text="Thử tải lại"
+          @retry="emit('retry')"
+        />
+      </div>
+
       <!-- Main Contact Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
+      <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
         <!-- Contact Information Card -->
         <div class="bg-white rounded-2xl card-shadow p-6 md:p-8 flex flex-col justify-between">
           <div>

@@ -17,11 +17,11 @@ defineProps<{
           <div class="flex items-center gap-2.5">
             <i class="fas fa-hard-hat text-2xl text-emerald-400"></i>
             <span class="font-extrabold text-white text-lg tracking-tight">
-              {{ company?.legalName || site?.brandName || 'THANH AN BẮC GIANG' }}
+              {{ company?.legalName || site?.brandName || 'Thanh An Bắc Giang' }}
             </span>
           </div>
-          <p class="text-sm mt-3.5 text-gray-400 leading-relaxed">
-            {{ site?.heroSubtitle || 'Đồng hành cùng mọi công trình từ dân dụng đến công nghiệp với chất lượng và uy tín hàng đầu tại Bắc Giang và các tỉnh miền Bắc.' }}
+          <p v-if="site?.heroSubtitle" class="text-sm mt-3.5 text-gray-400 leading-relaxed">
+            {{ site.heroSubtitle }}
           </p>
           <!-- MST only rendered when returned by API -->
           <div v-if="company?.taxCode" class="mt-4 text-xs text-gray-400">
@@ -41,10 +41,10 @@ defineProps<{
             </template>
             <template v-else>
               <li><a href="#home" class="hover:text-emerald-400 transition">Trang chủ</a></li>
-              <li><a href="#about" class="hover:text-emerald-400 transition">Giới thiệu doanh nghiệp</a></li>
-              <li><a href="#products" class="hover:text-emerald-400 transition">Sản phẩm phân phối</a></li>
-              <li><a href="#advantages" class="hover:text-emerald-400 transition">Lợi thế cạnh tranh</a></li>
-              <li><a href="#contact" class="hover:text-emerald-400 transition">Liên hệ & Bản đồ</a></li>
+              <li><a href="#about" class="hover:text-emerald-400 transition">Giới thiệu</a></li>
+              <li><a href="#products" class="hover:text-emerald-400 transition">Sản phẩm</a></li>
+              <li><a href="#advantages" class="hover:text-emerald-400 transition">Lợi thế</a></li>
+              <li><a href="#contact" class="hover:text-emerald-400 transition">Liên hệ</a></li>
             </template>
           </ul>
         </div>
@@ -96,8 +96,8 @@ defineProps<{
 
       <!-- Bottom bar -->
       <div class="text-center text-xs text-gray-400 pt-7 flex flex-col md:flex-row justify-between items-center gap-3">
-        <span>© 2025 {{ company?.legalName || 'CÔNG TY TNHH THANH AN BẮC GIANG' }}. All rights reserved.</span>
-        <span class="text-gray-300 font-medium">🏗️ Phân phối Thép Hòa Phát & Xi măng Pomihua chính hãng</span>
+        <span>© 2025 {{ company?.legalName || site?.brandName || 'Thanh An Bắc Giang' }}. All rights reserved.</span>
+        <span class="text-gray-300 font-medium">Vật liệu xây dựng chính hãng</span>
       </div>
     </div>
   </footer>

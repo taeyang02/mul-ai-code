@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { ProductResponse, CategoryResponse } from '@/types/api'
+import type { ProductResponse, CategoryResponse, ErrorResponse } from '@/types/api'
+import StatusAlert from '@/components/StatusAlert.vue'
 
 const props = defineProps<{
   products: ProductResponse[]
   categories?: CategoryResponse[]
   loading?: boolean
+  error?: ErrorResponse | null
 }>()
 
 const emit = defineEmits<{
   (e: 'selectProduct', productName: string): void
+  (e: 'retry'): void
 }>()
 
 const selectedCategory = ref<string>('all')
@@ -26,7 +29,7 @@ const filteredProducts = computed(() => {
   <section id="products" class="py-16 md:py-24 bg-gray-50 border-b border-gray-200">
     <div class="container mx-auto px-5 md:px-8">
       <!-- Section Header -->
-      <div class="text-center max-w-2xl mx-auto mb-12">
+      <div class="text-center max-w-2xl mx-auto mb-10">
         <span class="bg-white text-[#1e5a6b] px-4 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm border border-gray-200 inline-block">
           Dòng sản phẩm chủ lực
         </span>
@@ -38,8 +41,19 @@ const filteredProducts = computed(() => {
         </p>
       </div>
 
-      <!-- Category Filter Tabs (if categories exist) -->
-      <div v-if="categories && categories.length > 0" class="flex flex-wrap justify-center gap-2.5 mb-10">
+      <!-- Section Error State with Retry Button (Specifically addresses partial API failure) -->
+      <div v-if="error" class="max-w-2xl mx-auto my-6">
+        <StatusAlert
+          type="error"
+          title="Không thể tải danh mục sản phẩm"
+          :message="error.message || 'Đã xảy ra lỗi khi kết nối với máy chủ lấy danh sách sản phẩm.'"
+          retry-text="Thử tải lại sản phẩm"
+          @retry="emit('retry')"
+        />
+      </div>
+
+      <!-- Category Filter Tabs (if categories exist and no error) -->
+      <div v-else-if="categories && categories.length > 0 && products.length > 0" class="flex flex-wrap justify-center gap-2.5 mb-10">
         <button
           type="button"
           @click="selectedCategory = 'all'"
@@ -61,7 +75,7 @@ const filteredProducts = computed(() => {
       </div>
 
       <!-- Loading Skeleton -->
-      <div v-if="loading && products.length === 0" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div v-if="loading && products.length === 0 && !error" class="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div v-for="i in 2" :key="i" class="bg-white rounded-2xl p-6 card-shadow animate-pulse">
           <div class="h-48 bg-gray-200 rounded-xl mb-4"></div>
           <div class="h-6 bg-gray-200 rounded w-1/2 mb-3"></div>
@@ -71,14 +85,14 @@ const filteredProducts = computed(() => {
         </div>
       </div>
 
-      <!-- Empty State -->
-      <div v-else-if="filteredProducts.length === 0" class="text-center py-12 bg-white rounded-2xl border border-gray-200 p-8 card-shadow max-w-lg mx-auto">
+      <!-- Empty State (When successfully fetched but 0 products) -->
+      <div v-else-if="!loading && !error && filteredProducts.length === 0" class="text-center py-12 bg-white rounded-2xl border border-gray-200 p-8 card-shadow max-w-lg mx-auto">
         <i class="fas fa-box-open text-4xl text-gray-400 mb-3"></i>
         <p class="text-gray-600 font-medium">Hiện không có sản phẩm nào thuộc danh mục này.</p>
       </div>
 
       <!-- Products Grid -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
+      <div v-else-if="!error && filteredProducts.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-10">
         <div
           v-for="product in filteredProducts"
           :key="product.id"
