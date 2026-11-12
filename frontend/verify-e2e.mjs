@@ -51,19 +51,35 @@ function jdbcClasspath() {
   )
 }
 
+function javaBin(name) {
+  const home = process.env.JAVA_HOME
+  if (home) {
+    const candidate = path.join(home, 'bin', name)
+    if (fs.existsSync(candidate)) return candidate
+  }
+  return name
+}
+
 function runJdbcQuery(javaClassName, javaSource) {
   const jdbc = jdbcClasspath()
   const tmp = path.join(SHOT_DIR, '_jdbc')
   fs.mkdirSync(tmp, { recursive: true })
   fs.writeFileSync(path.join(tmp, `${javaClassName}.java`), javaSource)
-  const javac = spawnSync('javac', ['-cp', jdbc, `${javaClassName}.java`], { cwd: tmp, encoding: 'utf8' })
+  const javac = spawnSync(javaBin('javac'), ['-cp', jdbc, `${javaClassName}.java`], {
+    cwd: tmp,
+    encoding: 'utf8',
+    env: process.env,
+  })
   if (javac.status !== 0) {
-    log(`WARN: javac failed: ${javac.stderr}`)
+    log(`WARN: javac failed: ${javac.stderr || javac.stdout || javac.error}`)
     return null
   }
-  const run = spawnSync('java', ['-cp', `${tmp}:${jdbc}`, javaClassName], { encoding: 'utf8' })
+  const run = spawnSync(javaBin('java'), ['-cp', `${tmp}:${jdbc}`, javaClassName], {
+    encoding: 'utf8',
+    env: process.env,
+  })
   if (run.status !== 0) {
-    log(`WARN: java ${javaClassName} failed: ${run.stderr}`)
+    log(`WARN: java ${javaClassName} failed: ${run.stderr || run.stdout || run.error}`)
     return null
   }
   return run.stdout.trim()
