@@ -56,7 +56,7 @@ const emit = defineEmits<{
             class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2"
           >
             <div v-if="company.statusLabel" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-building text-2xl text-[#1e5a6b] mt-1"></i>
+              <i class="fas fa-building text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
               <div>
                 <span class="font-bold text-gray-800 text-sm block">Trạng thái:</span>
                 <span class="text-gray-600 text-sm">{{ company.statusLabel }}</span>
@@ -64,7 +64,7 @@ const emit = defineEmits<{
             </div>
 
             <div v-if="company.foundedOn" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-calendar-alt text-2xl text-[#1e5a6b] mt-1"></i>
+              <i class="fas fa-calendar-alt text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
               <div>
                 <span class="font-bold text-gray-800 text-sm block">Ngày thành lập:</span>
                 <span class="text-gray-600 text-sm">{{ company.foundedOn }}</span>
@@ -72,7 +72,7 @@ const emit = defineEmits<{
             </div>
 
             <div v-if="company.industry" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-hard-hat text-2xl text-[#1e5a6b] mt-1"></i>
+              <i class="fas fa-hard-hat text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
               <div>
                 <span class="font-bold text-gray-800 text-sm block">Ngành nghề:</span>
                 <span class="text-gray-600 text-sm">{{ company.industry }}</span>
@@ -80,7 +80,7 @@ const emit = defineEmits<{
             </div>
 
             <div v-if="company.serviceArea" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-map-marker-alt text-2xl text-[#1e5a6b] mt-1"></i>
+              <i class="fas fa-map-marker-alt text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
               <div>
                 <span class="font-bold text-gray-800 text-sm block">Khu vực phân phối:</span>
                 <span class="text-gray-600 text-sm">{{ company.serviceArea }}</span>
@@ -97,7 +97,7 @@ const emit = defineEmits<{
         <div class="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-md border border-gray-200">
           <div class="bg-white rounded-xl p-6 md:p-8 card-shadow space-y-5">
             <div v-if="company.highlightTitle" class="flex items-center gap-3 text-[#1e5a6b]">
-              <i class="fas fa-chart-line text-3xl"></i>
+              <i class="fas fa-chart-line text-3xl" aria-hidden="true"></i>
               <h3 class="font-bold text-xl md:text-2xl text-gray-800">
                 {{ company.highlightTitle }}
               </h3>

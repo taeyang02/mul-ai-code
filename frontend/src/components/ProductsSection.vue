@@ -25,22 +25,31 @@ const filteredProducts = computed(() => {
   }
   return props.products.filter(p => p.category?.slug === selectedCategory.value)
 })
+
+function getCategoryIcon(catSlug?: string): string {
+  const slug = (catSlug || '').toLowerCase()
+  if (slug.includes('thep') || slug.includes('steel')) {
+    return 'fas fa-industry'
+  }
+  if (slug.includes('xi-mang') || slug.includes('cement')) {
+    return 'fas fa-cubes'
+  }
+  return 'fas fa-layer-group'
+}
 </script>
 
 <template>
   <section id="products" class="py-16 md:py-24 bg-gray-50 border-b border-gray-200">
     <div class="container mx-auto px-5 md:px-8">
-      <!-- Section Header -->
+      <!-- Section Header (Neutral UI chrome) -->
       <div class="text-center max-w-2xl mx-auto mb-10">
         <span class="bg-white text-[#1e5a6b] px-4 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm border border-gray-200 inline-block">
-          Dòng sản phẩm chủ lực
+          Sản phẩm
         </span>
         <h2 class="text-3xl md:text-4xl font-extrabold mt-4 text-gray-800">
-          Vật tư xây dựng <span class="text-[#2c7a5e]">chính hãng</span>
+          Danh mục sản phẩm
         </h2>
-        <p class="text-gray-600 mt-3 text-sm md:text-base">
-          Chúng tôi cung cấp đa dạng chủng loại phục vụ mọi công trình từ dân dụng đến dự án công nghiệp.
-        </p>
+        <div class="w-16 h-1 bg-[#2c7a5e] mx-auto mt-3.5 mb-2 rounded-full"></div>
       </div>
 
       <!-- Section Error State with Retry Button (Specifically addresses partial API failure) -->
@@ -70,7 +79,7 @@ const filteredProducts = computed(() => {
         <button
           type="button"
           @click="selectedCategory = 'all'"
-          class="px-4 py-2 rounded-lg text-sm font-semibold transition"
+          class="px-4 py-2 rounded-lg text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
           :class="selectedCategory === 'all' ? 'bg-[#1e5a6b] text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'"
         >
           Tất cả sản phẩm
@@ -80,7 +89,7 @@ const filteredProducts = computed(() => {
           :key="cat.id"
           type="button"
           @click="selectedCategory = cat.slug"
-          class="px-4 py-2 rounded-lg text-sm font-semibold transition"
+          class="px-4 py-2 rounded-lg text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
           :class="selectedCategory === cat.slug ? 'bg-[#1e5a6b] text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'"
         >
           {{ cat.name }}
@@ -100,7 +109,7 @@ const filteredProducts = computed(() => {
 
       <!-- Empty State (When successfully fetched but 0 products) -->
       <div v-else-if="!loading && !error && filteredProducts.length === 0" class="text-center py-12 bg-white rounded-2xl border border-gray-200 p-8 card-shadow max-w-lg mx-auto">
-        <i class="fas fa-box-open text-4xl text-gray-400 mb-3"></i>
+        <i class="fas fa-box-open text-4xl text-gray-400 mb-3" aria-hidden="true"></i>
         <p class="text-gray-600 font-medium">Hiện không có sản phẩm nào thuộc danh mục này.</p>
       </div>
 
@@ -111,11 +120,19 @@ const filteredProducts = computed(() => {
           :key="product.id"
           class="group bg-white rounded-2xl card-shadow hover-lift transition-smooth overflow-hidden border border-gray-200/80 flex flex-col justify-between"
         >
-          <!-- Product Visual Header -->
+          <!-- Product Visual Header: Prioritizes product.imageUrl when present; otherwise uses category-driven icon -->
           <div class="h-48 bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center relative text-white transition-all overflow-hidden">
+            <img
+              v-if="product.imageUrl"
+              :src="product.imageUrl"
+              :alt="product.name"
+              class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            />
             <i
-              :class="product.slug.includes('thep') ? 'fas fa-industry' : 'fas fa-cubes'"
+              v-else
+              :class="getCategoryIcon(product.category?.slug)"
               class="text-7xl opacity-80 group-hover:scale-110 transition-transform duration-300"
+              aria-hidden="true"
             ></i>
             <!-- Specs Summary / Badge -->
             <div
@@ -159,24 +176,29 @@ const filteredProducts = computed(() => {
               <!-- Features / Specifications list (strictly from API) -->
               <ul v-if="product.features && product.features.length" class="mt-4 space-y-2 text-gray-600 text-sm">
                 <li
-                  v-for="(f, idx) in product.features"
-                  :key="idx"
+                  v-for="(feat, fIdx) in product.features"
+                  :key="fIdx"
                   class="flex items-center gap-2"
                 >
-                  <i class="fas fa-check-circle text-[#2c7a5e]"></i>
-                  <span>{{ f }}</span>
+                  <i class="fas fa-check text-[#2c7a5e] text-xs" aria-hidden="true"></i>
+                  <span>{{ feat }}</span>
                 </li>
               </ul>
             </div>
 
-            <div class="pt-6 mt-6 border-t border-gray-100">
+            <!-- Action Button -->
+            <div class="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between">
+              <span v-if="product.brand" class="text-xs text-gray-400 font-medium">
+                Thương hiệu: <strong class="text-gray-700">{{ product.brand }}</strong>
+              </span>
+              <span v-else></span>
+              
               <button
                 type="button"
                 @click="emit('selectProduct', product.name)"
-                class="w-full border-2 border-[#1e5a6b] text-[#1e5a6b] font-bold py-3 rounded-lg hover:bg-[#1e5a6b] hover:text-white transition flex items-center justify-center gap-2 shadow-xs"
+                class="btn-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
               >
-                <span>Báo giá {{ product.name }}</span>
-                <i class="fas fa-arrow-right text-xs"></i>
+                <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Nhận báo giá
               </button>
             </div>
           </div>

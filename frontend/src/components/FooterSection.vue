@@ -6,6 +6,8 @@ defineProps<{
   company: CompanyResponse | null
   contact: ContactResponse | null
 }>()
+
+const currentYear = new Date().getFullYear()
 </script>
 
 <template>
@@ -15,7 +17,7 @@ defineProps<{
         <!-- Col 1: Brand Info -->
         <div>
           <div class="flex items-center gap-2.5">
-            <i class="fas fa-hard-hat text-2xl text-emerald-400"></i>
+            <i class="fas fa-hard-hat text-2xl text-emerald-400" aria-hidden="true"></i>
             <span class="font-extrabold text-white text-lg tracking-tight">
               {{ company?.legalName || site?.brandName || '' }}
             </span>
@@ -30,22 +32,13 @@ defineProps<{
           </div>
         </div>
 
-        <!-- Col 2: Quick Links -->
+        <!-- Col 2: Quick Links (strictly rendered from site.navItems if present) -->
         <div>
           <h4 class="font-bold text-white mb-4 text-base">Liên kết nhanh</h4>
-          <ul class="space-y-2.5 text-sm">
-            <template v-if="site?.navItems && site.navItems.length > 0">
-              <li v-for="(item, idx) in site.navItems" :key="idx">
-                <a :href="item.href" class="hover:text-emerald-400 transition">{{ item.label }}</a>
-              </li>
-            </template>
-            <template v-else>
-              <li><a href="#home" class="hover:text-emerald-400 transition">Trang chủ</a></li>
-              <li><a href="#about" class="hover:text-emerald-400 transition">Giới thiệu</a></li>
-              <li><a href="#products" class="hover:text-emerald-400 transition">Sản phẩm</a></li>
-              <li><a href="#advantages" class="hover:text-emerald-400 transition">Lợi thế</a></li>
-              <li><a href="#contact" class="hover:text-emerald-400 transition">Liên hệ</a></li>
-            </template>
+          <ul v-if="site?.navItems && site.navItems.length > 0" class="space-y-2.5 text-sm">
+            <li v-for="(item, idx) in site.navItems" :key="idx">
+              <a :href="item.href" class="hover:text-emerald-400 transition">{{ item.label }}</a>
+            </li>
           </ul>
         </div>
 
@@ -53,15 +46,15 @@ defineProps<{
         <div>
           <h4 class="font-bold text-white mb-4 text-base">Giờ làm việc & Hỗ trợ</h4>
           <p v-if="contact?.businessHoursWeekday" class="text-sm text-gray-300">
-            <i class="fas fa-clock mr-2 text-emerald-400"></i>
+            <i class="fas fa-clock mr-2 text-emerald-400" aria-hidden="true"></i>
             {{ contact.businessHoursWeekday }}
           </p>
           <p v-if="contact?.businessHoursWeekend" class="text-sm text-gray-300 mt-2">
-            <i class="fas fa-headset mr-2 text-emerald-400"></i>
+            <i class="fas fa-headset mr-2 text-emerald-400" aria-hidden="true"></i>
             {{ contact.businessHoursWeekend }}
           </p>
           <p v-if="contact?.hotlineDisplay" class="text-sm text-emerald-400 font-bold mt-2">
-            <i class="fas fa-phone-alt mr-2"></i>
+            <i class="fas fa-phone-alt mr-2" aria-hidden="true"></i>
             {{ contact.hotlineDisplay }}
             <span v-if="contact.hotlineContactName" class="text-xs text-gray-400 font-normal">({{ contact.hotlineContactName }})</span>
           </p>
@@ -78,7 +71,7 @@ defineProps<{
               class="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center hover:bg-[#1e5a6b] text-gray-300 hover:text-white transition"
               aria-label="Facebook"
             >
-              <i class="fab fa-facebook-f"></i>
+              <i class="fab fa-facebook-f" aria-hidden="true"></i>
             </a>
             <a
               v-if="contact.zaloUrl"
@@ -96,7 +89,7 @@ defineProps<{
 
       <!-- Bottom bar -->
       <div class="text-center text-xs text-gray-400 pt-7 flex flex-col md:flex-row justify-between items-center gap-3">
-        <span>© 2025 {{ company?.legalName || site?.brandName || '' }}. All rights reserved.</span>
+        <span>© {{ currentYear }} {{ company?.legalName || site?.brandName || '' }}. All rights reserved.</span>
         <span v-if="site?.tagline" class="text-gray-300 font-medium">{{ site.tagline }}</span>
       </div>
     </div>

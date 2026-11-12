@@ -13,6 +13,8 @@ const emit = defineEmits<{
 
 <template>
   <div
+    :role="type === 'error' || !type ? 'alert' : 'status'"
+    aria-live="polite"
     class="rounded-xl p-4 border flex items-start gap-3 shadow-xs my-4"
     :class="{
       'bg-red-50 border-red-200 text-red-800': type === 'error' || !type,
@@ -27,6 +29,7 @@ const emit = defineEmits<{
         'fas fa-exclamation-triangle text-amber-600': type === 'warning',
         'fas fa-info-circle text-blue-600': type === 'info'
       }"
+      aria-hidden="true"
     ></i>
 
     <div class="flex-grow">
@@ -38,7 +41,7 @@ const emit = defineEmits<{
       v-if="retryText"
       type="button"
       @click="emit('retry')"
-      class="text-xs font-bold underline px-2 py-1 rounded hover:bg-black/5 transition"
+      class="text-xs font-bold underline px-2 py-1 rounded hover:bg-black/5 transition focus:outline-none focus:ring-2 focus:ring-current"
     >
       {{ retryText }}
     </button>
