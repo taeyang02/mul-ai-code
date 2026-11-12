@@ -10,7 +10,6 @@
  *   API_BASE      default http://127.0.0.1:8080/api/v1
  *   SHOT_DIR      default ./e2e-artifacts
  *   CHROME_PATH   optional Chromium executable
- *   DB_JDBC_CHECK default 1 — verify quote rows via JDBC helper if available
  */
 import { chromium } from 'playwright-core'
 import fs from 'fs'
@@ -45,17 +44,35 @@ function assert(cond, msg) {
   if (!cond) fail(msg)
 }
 
-async function quoteCountViaApiProbe() {
-  // Prefer DB count helper if present; else count via side-effect free approach:
-  // create unique marker and ensure GET list isn't public — we only verify POST 201 + JDBC file.
-  return null
+function jdbcClasspath() {
+  return (
+    process.env.PG_JDBC_JAR ||
+    `${process.env.HOME}/.m2/repository/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar`
+  )
+}
+
+function runJdbcQuery(javaClassName, javaSource) {
+  const jdbc = jdbcClasspath()
+  const tmp = path.join(SHOT_DIR, '_jdbc')
+  fs.mkdirSync(tmp, { recursive: true })
+  fs.writeFileSync(path.join(tmp, `${javaClassName}.java`), javaSource)
+  const javac = spawnSync('javac', ['-cp', jdbc, `${javaClassName}.java`], { cwd: tmp, encoding: 'utf8' })
+  if (javac.status !== 0) {
+    log(`WARN: javac failed: ${javac.stderr}`)
+    return null
+  }
+  const run = spawnSync('java', ['-cp', `${tmp}:${jdbc}`, javaClassName], { encoding: 'utf8' })
+  if (run.status !== 0) {
+    log(`WARN: java ${javaClassName} failed: ${run.stderr}`)
+    return null
+  }
+  return run.stdout.trim()
 }
 
 function countQuotesInDb() {
-  const jdbc =
-    process.env.PG_JDBC_JAR ||
-    `${process.env.HOME}/.m2/repository/org/postgresql/postgresql/42.7.4/postgresql-42.7.4.jar`
-  const javaSrc = `
+  const out = runJdbcQuery(
+    'CountQuotesE2E',
+    `
 import java.sql.*;
 public class CountQuotesE2E {
   public static void main(String[] a) throws Exception {
@@ -71,20 +88,38 @@ public class CountQuotesE2E {
   }
 }
 `
-  const tmp = path.join(SHOT_DIR, '_jdbc')
-  fs.mkdirSync(tmp, { recursive: true })
-  fs.writeFileSync(path.join(tmp, 'CountQuotesE2E.java'), javaSrc)
-  const javac = spawnSync('javac', ['-cp', jdbc, 'CountQuotesE2E.java'], { cwd: tmp, encoding: 'utf8' })
-  if (javac.status !== 0) {
-    log(`WARN: javac failed: ${javac.stderr}`)
-    return null
+  )
+  return out == null ? null : Number(out)
+}
+
+function findQuoteInDb(id, marker) {
+  const safeId = String(id).replace(/'/g, "")
+  const safeMarker = String(marker).replace(/'/g, "")
+  const out = runJdbcQuery(
+    'FindQuoteE2E',
+    `
+import java.sql.*;
+public class FindQuoteE2E {
+  public static void main(String[] a) throws Exception {
+    try (Connection c = DriverManager.getConnection(
+        System.getenv().getOrDefault("DATABASE_URL_JDBC", "jdbc:postgresql://127.0.0.1:5432/thanhan"),
+        System.getenv().getOrDefault("DATABASE_USERNAME", "thanhan"),
+        System.getenv().getOrDefault("DATABASE_PASSWORD", "thanhan"));
+         PreparedStatement ps = c.prepareStatement(
+           "SELECT id::text, message FROM quote_requests WHERE id = ?::uuid")) {
+      ps.setString(1, "${safeId}");
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) { System.out.print("MISSING"); return; }
+        String msg = rs.getString(2);
+        if (msg != null && msg.contains("${safeMarker}")) System.out.print("OK");
+        else System.out.print("MARKER_MISMATCH");
+      }
+    }
   }
-  const run = spawnSync('java', ['-cp', `${tmp}:${jdbc}`, 'CountQuotesE2E'], { encoding: 'utf8' })
-  if (run.status !== 0) {
-    log(`WARN: java CountQuotes failed: ${run.stderr}`)
-    return null
-  }
-  return Number(run.stdout.trim())
+}
+`
+  )
+  return out
 }
 
 async function launchBrowser() {
@@ -99,7 +134,6 @@ async function launchBrowser() {
 async function waitForApp(page) {
   await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 60000 })
   await page.waitForSelector('#app', { timeout: 15000 })
-  // Brand from API seed
   await page.waitForTimeout(800)
 }
 
@@ -122,6 +156,7 @@ async function assertNoHorizontalOverflow(page, label) {
     overflow.scrollWidth <= overflow.clientWidth + 1,
     `${label}: horizontal overflow scrollWidth=${overflow.scrollWidth} clientWidth=${overflow.clientWidth}`
   )
+  return overflow
 }
 
 async function expectVisibleText(page, text, label) {
@@ -131,6 +166,37 @@ async function expectVisibleText(page, text, label) {
 
 function retryControl(page) {
   return page.getByRole('button', { name: /Thử tải lại|Thử lại|tải lại/i })
+}
+
+function pathMatcher(endpointPath) {
+  return (url) => {
+    try {
+      const p = new URL(url).pathname.replace(/\/$/, '') || '/'
+      const target = endpointPath.replace(/\/$/, '')
+      return p === target
+    } catch {
+      return false
+    }
+  }
+}
+
+const RECOVERY_EXPECTATIONS = {
+  '/api/v1/products': {
+    successBody: (j) => Array.isArray(j?.items) && j.items.some((i) => /Thép Hòa Phát/i.test(i?.name || '')),
+    visibleText: 'Thép Hòa Phát',
+  },
+  '/api/v1/site/advantages': {
+    successBody: (j) => Array.isArray(j) && j.some((a) => /Uy tín hàng đầu/i.test(a?.title || '')),
+    visibleText: 'Uy tín hàng đầu',
+  },
+  '/api/v1/categories': {
+    successBody: (j) => Array.isArray(j) && j.some((c) => /Thép xây dựng/i.test(c?.name || '')),
+    visibleText: 'Thép xây dựng',
+  },
+  '/api/v1/site': {
+    successBody: (j) => j && /Thanh An Bắc Giang/i.test(j.brandName || ''),
+    visibleText: 'Thanh An Bắc Giang',
+  },
 }
 
 async function suiteViewports(browser) {
@@ -152,7 +218,6 @@ async function suiteViewports(browser) {
     await waitForApp(page)
     await expectVisibleText(page, 'Thanh An Bắc Giang', `${vp.name} brand`)
     await expectVisibleText(page, 'Thép Hòa Phát', `${vp.name} product`)
-    // Hotline may be abbreviated; match digits
     const hotlineVisible = await page.getByText(/0393/).first().isVisible().catch(() => false)
     assert(hotlineVisible, `${vp.name}: hotline 0393 not visible on first paint`)
     await assertNoHorizontalOverflow(page, vp.name)
@@ -163,21 +228,50 @@ async function suiteViewports(browser) {
   }
 }
 
+async function suiteMobileDrawer(browser) {
+  log('=== SUITE: mobile drawer open/close ===')
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+  const page = await context.newPage()
+  await waitForApp(page)
+
+  const toggle = page.getByRole('button', { name: /Toggle Navigation Menu/i })
+  assert((await toggle.count()) > 0, 'mobile menu toggle missing')
+
+  const closedOverflow = await assertNoHorizontalOverflow(page, 'mobile-drawer-closed')
+  log(`[drawer] closed scrollWidth=${closedOverflow.scrollWidth} clientWidth=${closedOverflow.clientWidth}`)
+  const hotlineClosed = await page.getByText(/0393/).first().isVisible().catch(() => false)
+  assert(hotlineClosed, 'mobile drawer closed: hotline must stay visible')
+
+  await toggle.click()
+  await page.waitForTimeout(400)
+  const drawer = page.locator('div.fixed.top-0.right-0').filter({ hasText: /Trang chủ|Sản phẩm|Nhận báo giá/i })
+  assert((await drawer.count()) > 0 && (await drawer.first().isVisible()), 'mobile drawer did not open')
+  const openOverflow = await assertNoHorizontalOverflow(page, 'mobile-drawer-open')
+  log(`[drawer] open scrollWidth=${openOverflow.scrollWidth} clientWidth=${openOverflow.clientWidth}`)
+  await page.screenshot({ path: path.join(SHOT_DIR, 'mobile-drawer-open.png'), fullPage: true })
+
+  // Close via in-drawer X (header toggle is covered by the panel)
+  const closeInDrawer = drawer.locator('button').first()
+  assert((await closeInDrawer.count()) > 0, 'mobile drawer close control missing')
+  await closeInDrawer.click()
+  await page.waitForTimeout(400)
+  assert((await drawer.count()) === 0 || !(await drawer.first().isVisible().catch(() => false)), 'mobile drawer did not close')
+  const afterOverflow = await assertNoHorizontalOverflow(page, 'mobile-drawer-reclosed')
+  log(`[drawer] reclosed scrollWidth=${afterOverflow.scrollWidth} clientWidth=${afterOverflow.clientWidth}`)
+  await page.screenshot({ path: path.join(SHOT_DIR, 'mobile-drawer-closed.png'), fullPage: true })
+
+  log('[drawer] open/close OK')
+  await context.close()
+}
+
 async function suitePartialFailure(browser, endpointPath, sectionHint) {
   log(`=== SUITE: partial failure ${endpointPath} ===`)
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
   const page = await context.newPage()
+  const matchPath = pathMatcher(endpointPath)
+  const expectation = RECOVERY_EXPECTATIONS[endpointPath]
+  assert(!!expectation, `missing recovery expectation for ${endpointPath}`)
 
-  // Abort only the targeted API path (exact pathname; do not let /site match /site/advantages)
-  const matchPath = (url) => {
-    try {
-      const p = new URL(url).pathname.replace(/\/$/, '') || '/'
-      const target = endpointPath.replace(/\/$/, '')
-      return p === target
-    } catch {
-      return false
-    }
-  }
   await page.route(matchPath, async (route) => {
     if (route.request().method() === 'GET') {
       await route.fulfill({
@@ -200,59 +294,75 @@ async function suitePartialFailure(browser, endpointPath, sectionHint) {
 
   await waitForApp(page)
 
-  // Other sections should still show seeded content when only one endpoint fails
-  if (!endpointPath.includes('/site') || endpointPath.includes('advantages')) {
-    // company/contact may still load
+  // Unrelated content must remain when only one endpoint fails
+  if (endpointPath !== '/api/v1/site') {
+    await expectVisibleText(page, 'Thanh An Bắc Giang', `${sectionHint}-fail keeps brand`)
   }
-  if (endpointPath.includes('/products')) {
-    await expectVisibleText(page, 'Thanh An Bắc Giang', 'products-fail keeps brand')
+  if (endpointPath !== '/api/v1/products') {
+    await expectVisibleText(page, 'Thép Hòa Phát', `${sectionHint}-fail keeps products`)
   }
 
   const hasRetry = (await retryControl(page).count()) > 0
+  assert(hasRetry, `${endpointPath}: retry control required (no reload fallback)`)
+
   const hasErrorCopy = await page
-    .getByText(/Không thể tải|lỗi|HTTP_NETWORK_ERROR|INTERNAL_ERROR|Simulated failure|Thông báo kết nối/i)
+    .getByText(/Không thể tải|lỗi|HTTP_NETWORK_ERROR|INTERNAL_ERROR|Simulated failure|Thông báo kết nối|máy chủ/i)
     .first()
     .isVisible()
     .catch(() => false)
-
-  assert(
-    hasRetry || hasErrorCopy,
-    `${endpointPath}: expected section/global error UI and/or retry control (${sectionHint})`
-  )
+  assert(hasErrorCopy, `${endpointPath}: expected visible error copy (${sectionHint})`)
 
   await page.screenshot({
     path: path.join(SHOT_DIR, `error-${endpointPath.replace(/\W+/g, '_')}.png`),
     fullPage: true,
   })
 
-  // Remove fault injection — retry must hit real API
   await page.unroute(matchPath)
-  if (hasRetry) {
-    // Prefer section-specific retry labels when present
-    const specific = page.getByRole('button', {
-      name: /Thử tải lại sản phẩm|Thử tải lại danh mục|Thử tải lại$/i,
-    })
-    const btn = (await specific.count()) > 0 ? specific.first() : retryControl(page).first()
-    await btn.click()
-    await page.waitForTimeout(2000)
-  } else {
-    await page.reload({ waitUntil: 'networkidle' })
-    await page.waitForTimeout(1000)
-  }
 
-  // After recovery, products/brand should be healthy for products case
-  if (endpointPath.includes('/products')) {
-    await expectVisibleText(page, 'Thép Hòa Phát', 'products recovered')
+  const specific = page.getByRole('button', {
+    name: /Thử tải lại sản phẩm|Thử tải lại danh mục|Thử tải lại$/i,
+  })
+  const btn = (await specific.count()) > 0 ? specific.first() : retryControl(page).first()
+
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (r) => {
+        try {
+          return matchPath(r.url()) && r.request().method() === 'GET'
+        } catch {
+          return false
+        }
+      },
+      { timeout: 15000 }
+    ),
+    btn.click(),
+  ])
+  assert(response.ok(), `${endpointPath}: retry GET expected 2xx got ${response.status()}`)
+  let body
+  try {
+    body = await response.json()
+  } catch (e) {
+    fail(`${endpointPath}: retry response was not JSON: ${e.message}`)
+    body = null
   }
-  if (endpointPath.includes('/company') || endpointPath === '/api/v1/site') {
-    await expectVisibleText(page, 'Thanh An Bắc Giang', 'site/company recovered')
+  assert(body != null && expectation.successBody(body), `${endpointPath}: retry body missing expected payload`)
+
+  await page.waitForTimeout(800)
+  await expectVisibleText(page, expectation.visibleText, `${sectionHint} recovered`)
+
+  // Other sections still healthy after recovery
+  if (endpointPath !== '/api/v1/products') {
+    await expectVisibleText(page, 'Thép Hòa Phát', `${sectionHint}-recovery keeps products`)
+  }
+  if (endpointPath !== '/api/v1/site') {
+    await expectVisibleText(page, 'Thanh An Bắc Giang', `${sectionHint}-recovery keeps brand`)
   }
 
   await page.screenshot({
     path: path.join(SHOT_DIR, `retry-${endpointPath.replace(/\W+/g, '_')}.png`),
     fullPage: true,
   })
-  log(`[partial] ${endpointPath} error UI + recovery exercised`)
+  log(`[partial] ${endpointPath} retry click + successful response + data OK`)
   await context.close()
 }
 
@@ -291,7 +401,7 @@ async function suiteQuote(browser) {
   assert(response.status() === 201, `quote POST expected 201 got ${response.status()}`)
   const body = await response.json()
   assert(!!body.id, 'quote response missing id')
-  log(`quote created id=${body.id}`)
+  log(`quote created id=${body.id} marker=${marker}`)
 
   await page.waitForTimeout(800)
   await page.screenshot({ path: path.join(SHOT_DIR, 'desktop-quote-result.png') })
@@ -299,10 +409,14 @@ async function suiteQuote(browser) {
   const after = countQuotesInDb()
   log(`quote_requests after=${after}`)
   if (before != null && after != null) {
-    assert(after > before, `DB quote count did not increase (${before} -> ${after})`)
+    assert(after === before + 1, `DB quote count expected ${before + 1} got ${after}`)
   } else {
     fail('Could not verify quote persistence via JDBC count')
   }
+
+  const row = findQuoteInDb(body.id, marker)
+  log(`quote DB lookup=${row}`)
+  assert(row === 'OK', `DB row for id=${body.id} marker=${marker} → ${row}`)
 
   await context.close()
 }
@@ -311,18 +425,32 @@ async function suiteApiHealth() {
   log('=== SUITE: direct API health ===')
   for (const p of ['/site', '/company', '/categories', '/products', '/site/advantages', '/contact']) {
     const res = await fetch(`${API_BASE}${p}`)
-    assert(res.ok, `GET ${p} -> ${res.status}`)
+    assert(res.ok, `GET ${p} → ${res.status}`)
   }
+
+  // Client-error mapping (backend GlobalExceptionHandler)
+  const badJson = await fetch(`${API_BASE}/quote-requests`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{not-json',
+  })
+  assert(badJson.status === 400, `malformed JSON expected 400 got ${badJson.status}`)
+  const badJsonBody = await badJson.json()
+  assert(badJsonBody.code === 'MALFORMED_REQUEST', `malformed JSON code=${badJsonBody.code}`)
+
+  const badUuid = await fetch(`${API_BASE}/products/not-a-uuid`)
+  assert(badUuid.status === 400, `bad UUID expected 400 got ${badUuid.status}`)
+  const badUuidBody = await badUuid.json()
+  assert(badUuidBody.code === 'INVALID_PARAMETER', `bad UUID code=${badUuidBody.code}`)
 }
 
 async function main() {
   fs.mkdirSync(SHOT_DIR, { recursive: true })
   log(`BASE_URL=${BASE_URL} API_BASE=${API_BASE} SHOT_DIR=${SHOT_DIR}`)
 
-  // Smoke: app reachable
   try {
     const r = await fetch(BASE_URL)
-    assert(r.ok, `BASE_URL not reachable: ${BASE_URL} -> ${r.status}`)
+    assert(r.ok, `BASE_URL not reachable: ${BASE_URL} → ${r.status}`)
   } catch (e) {
     fail(`BASE_URL fetch failed: ${e.message}`)
     finish()
@@ -334,7 +462,7 @@ async function main() {
   const browser = await launchBrowser()
   try {
     await suiteViewports(browser)
-    // Independent endpoint faults
+    await suiteMobileDrawer(browser)
     await suitePartialFailure(browser, '/api/v1/products', 'products')
     await suitePartialFailure(browser, '/api/v1/site/advantages', 'advantages')
     await suitePartialFailure(browser, '/api/v1/categories', 'categories')

@@ -10,6 +10,7 @@ public class AppProperties {
 
     private final Cors cors = new Cors();
     private final Quote quote = new Quote();
+    private final Http http = new Http();
 
     public Cors getCors() {
         return cors;
@@ -17,6 +18,26 @@ public class AppProperties {
 
     public Quote getQuote() {
         return quote;
+    }
+
+    public Http getHttp() {
+        return http;
+    }
+
+    public static class Http {
+        /**
+         * Peer addresses (exact IP or CIDR) allowed to supply {@code X-Forwarded-For}.
+         * Empty = never trust forwarded headers (use {@code remoteAddr} only).
+         */
+        private List<String> trustedProxies = new ArrayList<>();
+
+        public List<String> getTrustedProxies() {
+            return trustedProxies;
+        }
+
+        public void setTrustedProxies(List<String> trustedProxies) {
+            this.trustedProxies = trustedProxies != null ? trustedProxies : new ArrayList<>();
+        }
     }
 
     public static class Cors {

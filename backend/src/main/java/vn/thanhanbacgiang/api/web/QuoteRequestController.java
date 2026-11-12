@@ -17,9 +17,11 @@ import vn.thanhanbacgiang.api.service.QuoteRequestService;
 public class QuoteRequestController {
 
     private final QuoteRequestService quoteRequestService;
+    private final ClientIpResolver clientIpResolver;
 
-    public QuoteRequestController(QuoteRequestService quoteRequestService) {
+    public QuoteRequestController(QuoteRequestService quoteRequestService, ClientIpResolver clientIpResolver) {
         this.quoteRequestService = quoteRequestService;
+        this.clientIpResolver = clientIpResolver;
     }
 
     @PostMapping("/quote-requests")
@@ -28,16 +30,8 @@ public class QuoteRequestController {
             @Valid @RequestBody QuoteRequestCreate request,
             HttpServletRequest httpRequest
     ) {
-        String clientIp = resolveClientIp(httpRequest);
+        String clientIp = clientIpResolver.resolve(httpRequest);
         String userAgent = httpRequest.getHeader("User-Agent");
         return quoteRequestService.create(request, clientIp, userAgent);
-    }
-
-    private static String resolveClientIp(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
-        if (forwarded != null && !forwarded.isBlank()) {
-            return forwarded.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
     }
 }

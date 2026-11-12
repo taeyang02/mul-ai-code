@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watchEffect, onMounted } from 'vue'
 import HeaderNav from '@/components/HeaderNav.vue'
 import HeroSection from '@/components/HeroSection.vue'
 import AboutSection from '@/components/AboutSection.vue'
@@ -165,6 +165,29 @@ function loadAll() {
   fetchAdvantages()
   fetchContact()
 }
+
+// Dynamically update document title and meta description from Site API
+watchEffect(() => {
+  if (site.value?.seoTitle) {
+    document.title = site.value.seoTitle
+  } else if (site.value?.brandName) {
+    document.title = site.value.brandName
+  }
+
+  const metaDesc = document.querySelector('meta[name="description"]')
+  if (metaDesc) {
+    if (site.value?.seoDescription) {
+      metaDesc.setAttribute('content', site.value.seoDescription)
+    } else if (site.value?.heroSubtitle) {
+      metaDesc.setAttribute('content', site.value.heroSubtitle)
+    }
+  } else if (site.value?.seoDescription) {
+    const meta = document.createElement('meta')
+    meta.name = 'description'
+    meta.content = site.value.seoDescription
+    document.head.appendChild(meta)
+  }
+})
 
 onMounted(() => {
   loadAll()

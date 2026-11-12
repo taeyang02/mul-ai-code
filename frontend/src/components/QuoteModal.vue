@@ -105,7 +105,7 @@ async function handleSubmit() {
       website: form.website || '',
     })
 
-    successMessage.value = `Yêu cầu báo giá của bạn đã được tiếp nhận thành công! Mã tham chiếu: ${res.id.slice(0, 8)}. Đội ngũ tư vấn Thanh An sẽ liên hệ với bạn trong thời gian sớm nhất.`
+    successMessage.value = `Yêu cầu báo giá của bạn đã được tiếp nhận thành công! Mã tham chiếu: ${res.id.slice(0, 8)}. Đội ngũ tư vấn sẽ liên hệ với bạn trong thời gian sớm nhất.`
     emit('submitted')
 
     // Reset form after delay
@@ -160,7 +160,7 @@ async function handleSubmit() {
           Yêu cầu báo giá trực tuyến
         </h3>
         <p class="text-gray-600 text-sm mt-1">
-          Điền thông tin bên dưới để nhận bảng giá Thép & Xi măng ưu đãi nhất từ Thanh An Bắc Giang.
+          Điền thông tin bên dưới để nhận bảng giá vật tư ưu đãi nhất.
         </p>
       </div>
 
@@ -281,10 +281,14 @@ async function handleSubmit() {
               class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 bg-white"
             >
               <option value="">-- Chọn sản phẩm --</option>
-              <option value="Thép Hòa Phát">Thép Hòa Phát</option>
-              <option value="Xi măng Pomihua">Xi măng Pomihua</option>
-              <option value="Cả Thép và Xi măng">Cả Thép và Xi măng</option>
-              <option value="Vật liệu xây dựng khác">Vật liệu xây dựng khác</option>
+              <option
+                v-for="p in products"
+                :key="p.id"
+                :value="p.name"
+              >
+                {{ p.name }}
+              </option>
+              <option value="Khác">Khác / Nhiều sản phẩm</option>
             </select>
           </div>
         </div>
@@ -298,7 +302,7 @@ async function handleSubmit() {
             v-model="form.message"
             rows="3"
             required
-            placeholder="Ví dụ: Xin báo giá thép D16 và xi măng PCB40 giao tại công trình KCN Đình Trám..."
+            placeholder="Ví dụ: Xin báo giá số lượng vật tư giao tại công trình..."
             class="w-full px-3.5 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
             :class="{ 'border-red-500 bg-red-50/50': fieldErrors.message }"
           ></textarea>

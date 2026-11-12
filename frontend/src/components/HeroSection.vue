@@ -40,15 +40,10 @@ const emit = defineEmits<{
         </span>
 
         <!-- Hero Heading from Site API -->
-        <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight text-gray-900">
-          <template v-if="site?.heroTitle">
-            {{ site.heroTitle }}
-          </template>
-          <template v-else>
-            Vật liệu xây dựng <br>
-            <span class="text-gradient-brand">Chất lượng vượt trội</span>
-          </template>
+        <h1 v-if="site?.heroTitle" class="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight tracking-tight text-gray-900">
+          {{ site.heroTitle }}
         </h1>
+        <div v-else-if="loading" class="h-14 bg-gray-200/60 rounded-xl animate-pulse w-3/4 mb-4"></div>
 
         <!-- Slogan Description from Site API -->
         <p

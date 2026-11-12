@@ -26,7 +26,7 @@ function closeMobileMenu() {
         <i class="fas fa-hard-hat text-2xl md:text-3xl text-[#1e5a6b]"></i>
         <div class="leading-tight">
           <h1 class="font-extrabold text-base md:text-xl tracking-tight text-gray-800">
-            {{ site?.brandName || 'Thanh An' }}
+            {{ site?.brandName || '' }}
           </h1>
           <p v-if="site?.tagline" class="text-[10px] md:text-xs font-semibold text-[#2c7a5e] tracking-wider uppercase">
             {{ site.tagline }}
@@ -118,7 +118,7 @@ function closeMobileMenu() {
           <div class="flex items-center justify-between border-b pb-4">
             <div class="flex items-center space-x-2">
               <i class="fas fa-hard-hat text-2xl text-[#1e5a6b]"></i>
-              <span class="font-bold text-gray-800">{{ site?.brandName || 'Thanh An Bắc Giang' }}</span>
+              <span class="font-bold text-gray-800">{{ site?.brandName || '' }}</span>
             </div>
             <button
               type="button"

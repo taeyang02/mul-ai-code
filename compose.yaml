@@ -23,6 +23,9 @@ services:
       DATABASE_USERNAME: thanhan
       DATABASE_PASSWORD: thanhan
       APP_CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://localhost:8088
+      # Empty by default: ignore client-supplied X-Forwarded-For (backend also exposed on :8080).
+      # When only a known reverse proxy reaches the API, set APP_HTTP_TRUSTED_PROXIES to that peer IP/CIDR.
+      APP_HTTP_TRUSTED_PROXIES: ${APP_HTTP_TRUSTED_PROXIES:-}
       SERVER_PORT: 8080
     ports:
       - "8080:8080"

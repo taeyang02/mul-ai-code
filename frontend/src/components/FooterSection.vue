@@ -17,7 +17,7 @@ defineProps<{
           <div class="flex items-center gap-2.5">
             <i class="fas fa-hard-hat text-2xl text-emerald-400"></i>
             <span class="font-extrabold text-white text-lg tracking-tight">
-              {{ company?.legalName || site?.brandName || 'Thanh An Bắc Giang' }}
+              {{ company?.legalName || site?.brandName || '' }}
             </span>
           </div>
           <p v-if="site?.heroSubtitle" class="text-sm mt-3.5 text-gray-400 leading-relaxed">
@@ -96,8 +96,8 @@ defineProps<{
 
       <!-- Bottom bar -->
       <div class="text-center text-xs text-gray-400 pt-7 flex flex-col md:flex-row justify-between items-center gap-3">
-        <span>© 2025 {{ company?.legalName || site?.brandName || 'Thanh An Bắc Giang' }}. All rights reserved.</span>
-        <span class="text-gray-300 font-medium">Vật liệu xây dựng chính hãng</span>
+        <span>© 2025 {{ company?.legalName || site?.brandName || '' }}. All rights reserved.</span>
+        <span v-if="site?.tagline" class="text-gray-300 font-medium">{{ site.tagline }}</span>
       </div>
     </div>
   </footer>

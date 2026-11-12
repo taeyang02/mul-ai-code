@@ -135,4 +135,72 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"))
                 .andExpect(jsonPath("$.path").value("/api/v1/products/00000000-0000-0000-0000-000000000099"));
     }
+
+    @Test
+    @Order(6)
+    void malformedJsonAndInvalidParamsReturn400() throws Exception {
+        mockMvc.perform(post("/api/v1/quote-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{not-json"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("MALFORMED_REQUEST"))
+                .andExpect(jsonPath("$.message").value("Malformed request body"))
+                .andExpect(jsonPath("$.status").value(400));
+
+        mockMvc.perform(get("/api/v1/products/not-a-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.details[0].field").value("id"));
+
+        mockMvc.perform(get("/api/v1/products").param("page", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PARAMETER"))
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.details[0].field").value("page"));
+    }
+
+    @Test
+    @Order(7)
+    void spoofedXForwardedForDoesNotBypassRateLimit() throws Exception {
+        String body = """
+                {
+                  "fullName":"Rate Limit Tester",
+                  "phone":"0393284994",
+                  "email":"rate@example.com",
+                  "productInterest":"Thép Hòa Phát",
+                  "message":"Rate limit probe message long enough",
+                  "sourcePage":"/#quote",
+                  "website":""
+                }
+                """;
+
+        // Trusted proxies empty in test profile → X-Forwarded-For must be ignored.
+        // Drain the shared peer-address bucket (may already have rows from earlier tests), then
+        // confirm a fresh spoofed XFF still receives 429 instead of opening a new bucket.
+        boolean hitLimit = false;
+        for (int i = 0; i < 10; i++) {
+            int status = mockMvc.perform(post("/api/v1/quote-requests")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .header("X-Forwarded-For", "198.51.100." + (10 + i))
+                            .content(body))
+                    .andReturn()
+                    .getResponse()
+                    .getStatus();
+            if (status == 429) {
+                hitLimit = true;
+                break;
+            }
+            assertThat(status).isEqualTo(201);
+        }
+        assertThat(hitLimit).as("expected rate limit after exhausting peer bucket").isTrue();
+
+        mockMvc.perform(post("/api/v1/quote-requests")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Forwarded-For", "203.0.113.200")
+                        .content(body))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMITED"))
+                .andExpect(jsonPath("$.status").value(429));
+    }
 }
