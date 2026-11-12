@@ -163,7 +163,8 @@ async function launchBrowser() {
 }
 
 async function waitForApp(page) {
-  await page.goto(BASE_URL, { waitUntil: 'networkidle', timeout: 60000 })
+  // Prefer load over networkidle: Vite HMR websockets can keep networkidle pending forever.
+  await page.goto(BASE_URL, { waitUntil: 'load', timeout: 60000 })
   await page.waitForSelector('#app', { timeout: 15000 })
   await page.waitForTimeout(800)
 }
