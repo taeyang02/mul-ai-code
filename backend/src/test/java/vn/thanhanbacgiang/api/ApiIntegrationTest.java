@@ -204,3 +204,4 @@ class ApiIntegrationTest {
                 .andExpect(jsonPath("$.status").value(429));
     }
 }
+

@@ -234,6 +234,7 @@ async function suiteMobileDrawer(browser) {
   const page = await context.newPage()
   await waitForApp(page)
 
+  const navLabels = ['Trang chủ', 'Giới thiệu', 'Sản phẩm', 'Lợi thế', 'Liên hệ']
   const toggle = page.getByRole('button', { name: /Toggle Navigation Menu/i })
   assert((await toggle.count()) > 0, 'mobile menu toggle missing')
 
@@ -243,14 +244,40 @@ async function suiteMobileDrawer(browser) {
   assert(hotlineClosed, 'mobile drawer closed: hotline must stay visible')
 
   await toggle.click()
-  await page.waitForTimeout(400)
+  await page.waitForTimeout(500)
   const drawer = page.locator('div.fixed.top-0.right-0').filter({ hasText: /Trang chủ|Sản phẩm|Nhận báo giá/i })
   assert((await drawer.count()) > 0 && (await drawer.first().isVisible()), 'mobile drawer did not open')
+
+  const box = await drawer.first().boundingBox()
+  assert(!!box, 'mobile drawer missing bounding box')
+  assert(box.height >= 600, `mobile drawer height too small for viewport: ${box.height}`)
+  assert(box.width >= 200, `mobile drawer width too small: ${box.width}`)
+  assert(box.y <= 8, `mobile drawer top not near viewport top: y=${box.y}`)
+  // Right edge should reach near the viewport (fixed right drawer)
+  assert(box.x + box.width >= 380, `mobile drawer does not reach viewport right edge: ${JSON.stringify(box)}`)
+  log(`[drawer] open box x=${box.x} y=${box.y} w=${box.width} h=${box.height}`)
+
+  const backdrop = page.locator('div.fixed.inset-0').first()
+  if ((await backdrop.count()) > 0) {
+    const bb = await backdrop.boundingBox()
+    assert(!!bb && bb.width >= 380 && bb.height >= 800, `backdrop not full viewport: ${JSON.stringify(bb)}`)
+  }
+
+  for (const label of navLabels) {
+    const link = drawer.getByRole('link', { name: label }).first()
+    assert((await link.count()) > 0, `drawer missing nav link: ${label}`)
+    assert(await link.isVisible(), `drawer nav link not visible: ${label}`)
+    const lb = await link.boundingBox()
+    assert(!!lb && lb.height > 0 && lb.y >= 0 && lb.y + lb.height <= 844, `drawer link ${label} outside viewport: ${JSON.stringify(lb)}`)
+    // Must be clickable (not clipped by header containing block)
+    await link.click({ trial: true })
+  }
+
   const openOverflow = await assertNoHorizontalOverflow(page, 'mobile-drawer-open')
   log(`[drawer] open scrollWidth=${openOverflow.scrollWidth} clientWidth=${openOverflow.clientWidth}`)
   await page.screenshot({ path: path.join(SHOT_DIR, 'mobile-drawer-open.png'), fullPage: true })
 
-  // Close via in-drawer X (header toggle is covered by the panel)
+  // Close via in-drawer X (header toggle may be covered by the panel)
   const closeInDrawer = drawer.locator('button').first()
   assert((await closeInDrawer.count()) > 0, 'mobile drawer close control missing')
   await closeInDrawer.click()
@@ -260,7 +287,7 @@ async function suiteMobileDrawer(browser) {
   log(`[drawer] reclosed scrollWidth=${afterOverflow.scrollWidth} clientWidth=${afterOverflow.clientWidth}`)
   await page.screenshot({ path: path.join(SHOT_DIR, 'mobile-drawer-closed.png'), fullPage: true })
 
-  log('[drawer] open/close OK')
+  log('[drawer] open/close + viewport links OK')
   await context.close()
 }
 
