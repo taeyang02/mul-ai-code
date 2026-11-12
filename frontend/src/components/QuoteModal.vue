@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
-import { apiService, normalizeApiError } from '@/services/api'
-import type { QuoteRequestPayload, Product } from '@/types/api'
+import { apiService, parseApiError } from '@/services/api'
+import type { ProductResponse } from '@/types/api'
 
 const props = defineProps<{
   isOpen: boolean
   defaultProduct?: string
-  products?: Product[]
+  products?: ProductResponse[]
 }>()
 
 const emit = defineEmits<{
@@ -14,13 +14,14 @@ const emit = defineEmits<{
   (e: 'submitted'): void
 }>()
 
-const form = reactive<QuoteRequestPayload>({
+const form = reactive({
   fullName: '',
   phone: '',
   email: '',
-  productName: '',
-  quantity: '',
-  note: '',
+  companyName: '',
+  productInterest: '',
+  message: '',
+  website: '', // Honeypot field
 })
 
 const submitting = ref(false)
@@ -32,7 +33,7 @@ watch(
   () => props.defaultProduct,
   (val) => {
     if (val) {
-      form.productName = val
+      form.productInterest = val
     }
   },
   { immediate: true }
@@ -46,7 +47,7 @@ watch(
       successMessage.value = null
       fieldErrors.value = {}
       if (props.defaultProduct) {
-        form.productName = props.defaultProduct
+        form.productInterest = props.defaultProduct
       }
     }
   }
@@ -56,18 +57,14 @@ function validateClient(): boolean {
   fieldErrors.value = {}
   let valid = true
 
-  if (!form.fullName.trim()) {
-    fieldErrors.value.fullName = 'Vui lòng nhập họ và tên của bạn'
+  if (!form.fullName.trim() || form.fullName.trim().length < 2) {
+    fieldErrors.value.fullName = 'Họ và tên tối thiểu 2 ký tự'
     valid = false
   }
 
-  const phoneRegex = /^(0|\+84)[3|5|7|8|9][0-9]{8}$/
   const cleanPhone = form.phone.replace(/[\s.-]/g, '')
-  if (!cleanPhone) {
-    fieldErrors.value.phone = 'Vui lòng cung cấp số điện thoại liên hệ'
-    valid = false
-  } else if (!phoneRegex.test(cleanPhone)) {
-    fieldErrors.value.phone = 'Số điện thoại không hợp lệ (ví dụ: 0393284994)'
+  if (!cleanPhone || cleanPhone.length < 8) {
+    fieldErrors.value.phone = 'Số điện thoại tối thiểu 8 chữ số'
     valid = false
   }
 
@@ -77,6 +74,11 @@ function validateClient(): boolean {
       fieldErrors.value.email = 'Địa chỉ email không đúng định dạng'
       valid = false
     }
+  }
+
+  if (!form.message.trim() || form.message.trim().length < 5) {
+    fieldErrors.value.message = 'Nội dung yêu cầu báo giá tối thiểu 5 ký tự'
+    valid = false
   }
 
   return valid
@@ -92,35 +94,38 @@ async function handleSubmit() {
   successMessage.value = null
 
   try {
-    const res = await apiService.submitQuoteRequest({
+    const res = await apiService.createQuoteRequest({
       fullName: form.fullName.trim(),
       phone: form.phone.trim(),
-      email: form.email?.trim() || undefined,
-      productName: form.productName?.trim() || undefined,
-      quantity: form.quantity?.trim() || undefined,
-      note: form.note?.trim() || undefined,
+      email: form.email?.trim() || null,
+      companyName: form.companyName?.trim() || null,
+      productInterest: form.productInterest?.trim() || null,
+      message: form.message.trim(),
+      sourcePage: window.location.hash || '/#quote',
+      website: form.website || '',
     })
 
-    successMessage.value = res.message || 'Yêu cầu báo giá của bạn đã được gửi thành công! Đội ngũ tư vấn Thanh An sẽ liên hệ lại trong thời gian sớm nhất.'
+    successMessage.value = `Yêu cầu báo giá của bạn đã được tiếp nhận thành công! Mã tham chiếu: ${res.id.slice(0, 8)}. Đội ngũ tư vấn Thanh An sẽ liên hệ với bạn trong thời gian sớm nhất.`
     emit('submitted')
 
-    // Reset form after 2 seconds
+    // Reset form after delay
     setTimeout(() => {
       form.fullName = ''
       form.phone = ''
       form.email = ''
-      form.quantity = ''
-      form.note = ''
+      form.companyName = ''
+      form.message = ''
+      form.website = ''
       if (!props.defaultProduct) {
-        form.productName = ''
+        form.productInterest = ''
       }
     }, 1500)
   } catch (err) {
-    const apiErr = normalizeApiError(err)
-    errorMessage.value = apiErr.message || 'Không thể gửi yêu cầu báo giá. Vui lòng thử lại.'
-    if (apiErr.errors && apiErr.errors.length) {
-      for (const fe of apiErr.errors) {
-        fieldErrors.value[fe.field] = fe.message
+    const apiErr = parseApiError(err)
+    errorMessage.value = apiErr.message || 'Không thể gửi yêu cầu báo giá. Vui lòng kiểm tra lại thông tin.'
+    if (apiErr.details && apiErr.details.length > 0) {
+      for (const d of apiErr.details) {
+        fieldErrors.value[d.field] = d.message
       }
     }
   } finally {
@@ -189,6 +194,16 @@ async function handleSubmit() {
 
       <!-- Quote Request Form -->
       <form v-if="!successMessage" @submit.prevent="handleSubmit" class="space-y-4">
+        <!-- Honeypot (hidden from real users) -->
+        <input
+          v-model="form.website"
+          type="text"
+          name="website"
+          class="hidden"
+          tabindex="-1"
+          autocomplete="off"
+        />
+
         <!-- Full Name -->
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
@@ -243,48 +258,53 @@ async function handleSubmit() {
           </div>
         </div>
 
-        <!-- Product & Quantity Grid -->
+        <!-- Company Name & Product Interest Grid -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+              Tên công ty / Đơn vị
+            </label>
+            <input
+              v-model="form.companyName"
+              type="text"
+              placeholder="Ví dụ: Công ty Xây dựng ABC"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
+            />
+          </div>
+
           <div>
             <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
               Sản phẩm quan tâm
             </label>
             <select
-              v-model="form.productName"
+              v-model="form.productInterest"
               class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 bg-white"
             >
               <option value="">-- Chọn sản phẩm --</option>
               <option value="Thép Hòa Phát">Thép Hòa Phát</option>
               <option value="Xi măng Pomihua">Xi măng Pomihua</option>
-              <option value="Cả hai loại VLXD">Cả Thép & Xi măng</option>
+              <option value="Cả Thép và Xi măng">Cả Thép và Xi măng</option>
               <option value="Vật liệu xây dựng khác">Vật liệu xây dựng khác</option>
             </select>
           </div>
-
-          <div>
-            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-              Khối lượng ước tính
-            </label>
-            <input
-              v-model="form.quantity"
-              type="text"
-              placeholder="Ví dụ: 30 tấn, 500 bao..."
-              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
-            />
-          </div>
         </div>
 
-        <!-- Note / Project Address -->
+        <!-- Message / Quantity / Note -->
         <div>
           <label class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-            Ghi chú / Địa chỉ công trình
+            Nội dung yêu cầu / Số lượng dự kiến <span class="text-red-500">*</span>
           </label>
           <textarea
-            v-model="form.note"
+            v-model="form.message"
             rows="3"
-            placeholder="Địa chỉ giao hàng, tiến độ công trình hoặc yêu cầu riêng..."
+            required
+            placeholder="Ví dụ: Xin báo giá thép D16 và xi măng PCB40 giao tại công trình KCN Đình Trám..."
             class="w-full px-3.5 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
+            :class="{ 'border-red-500 bg-red-50/50': fieldErrors.message }"
           ></textarea>
+          <p v-if="fieldErrors.message" class="text-xs text-red-600 mt-1">
+            {{ fieldErrors.message }}
+          </p>
         </div>
 
         <!-- Submit Button -->

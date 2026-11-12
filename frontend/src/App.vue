@@ -9,12 +9,22 @@ import ContactSection from '@/components/ContactSection.vue'
 import FooterSection from '@/components/FooterSection.vue'
 import QuoteModal from '@/components/QuoteModal.vue'
 import StatusAlert from '@/components/StatusAlert.vue'
-import { apiService, normalizeApiError } from '@/services/api'
-import type { CompanyInfo, Advantage, Product } from '@/types/api'
+import { apiService, parseApiError } from '@/services/api'
+import type {
+  SiteResponse,
+  CompanyResponse,
+  CategoryResponse,
+  ProductResponse,
+  AdvantageResponse,
+  ContactResponse
+} from '@/types/api'
 
-const companyInfo = ref<CompanyInfo | null>(null)
-const advantages = ref<Advantage[]>([])
-const products = ref<Product[]>([])
+const site = ref<SiteResponse | null>(null)
+const company = ref<CompanyResponse | null>(null)
+const categories = ref<CategoryResponse[]>([])
+const products = ref<ProductResponse[]>([])
+const advantages = ref<AdvantageResponse[]>([])
+const contact = ref<ContactResponse | null>(null)
 
 const loading = ref(true)
 const apiError = ref<string | null>(null)
@@ -33,7 +43,7 @@ function closeQuoteModal() {
 }
 
 function handleQuoteSubmitted() {
-  showToast('Yêu cầu báo giá đã được ghi nhận thành công!')
+  showToast('Yêu cầu báo giá đã được ghi nhận vào hệ thống thành công!')
 }
 
 function showToast(msg: string) {
@@ -48,31 +58,32 @@ async function loadData() {
   apiError.value = null
 
   try {
-    const [infoData, advData, prodData] = await Promise.all([
-      apiService.getCompanyInfo().catch((err) => {
-        console.warn('Failed to load company info from backend:', err)
-        return null
-      }),
-      apiService.getAdvantages().catch((err) => {
-        console.warn('Failed to load advantages from backend:', err)
-        return []
-      }),
-      apiService.getProducts().catch((err) => {
-        console.warn('Failed to load products from backend:', err)
-        return []
-      }),
+    const results = await Promise.allSettled([
+      apiService.getSite(),
+      apiService.getCompany(),
+      apiService.getCategories(),
+      apiService.getProducts(),
+      apiService.getAdvantages(),
+      apiService.getContact(),
     ])
 
-    companyInfo.value = infoData
-    advantages.value = advData
-    products.value = prodData
+    if (results[0].status === 'fulfilled') site.value = results[0].value
+    if (results[1].status === 'fulfilled') company.value = results[1].value
+    if (results[2].status === 'fulfilled') categories.value = results[2].value
+    if (results[3].status === 'fulfilled') products.value = results[3].value.items || []
+    if (results[4].status === 'fulfilled') advantages.value = results[4].value
+    if (results[5].status === 'fulfilled') contact.value = results[5].value
 
-    if (!infoData && advData.length === 0 && prodData.length === 0) {
-      apiError.value = 'Chưa thể kết nối tới Backend API. Vui lòng kiểm tra trạng thái máy chủ Backend hoặc thử lại.'
+    // Check if all failed
+    const allFailed = results.every(r => r.status === 'rejected')
+    if (allFailed) {
+      const firstError = (results[0] as PromiseRejectedResult).reason
+      const parsed = parseApiError(firstError)
+      apiError.value = `${parsed.message} (${parsed.code}). Đang kết nối tới ${import.meta.env.VITE_API_BASE_URL || '/api/v1'}.`
     }
   } catch (err) {
-    const errorDetails = normalizeApiError(err)
-    apiError.value = errorDetails.message
+    const parsed = parseApiError(err)
+    apiError.value = parsed.message
   } finally {
     loading.value = false
   }
@@ -87,7 +98,8 @@ onMounted(() => {
   <div class="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
     <!-- Header -->
     <HeaderNav
-      :company-info="companyInfo"
+      :site="site"
+      :contact="contact"
       @open-quote="openQuoteModal('')"
     />
 
@@ -95,7 +107,7 @@ onMounted(() => {
     <div v-if="apiError" class="container mx-auto px-5 md:px-8 mt-4">
       <StatusAlert
         type="warning"
-        title="Thông báo kết nối API"
+        title="Thông báo kết nối API Backend"
         :message="apiError"
         retry-text="Thử tải lại"
         @retry="loadData"
@@ -106,20 +118,21 @@ onMounted(() => {
     <main class="flex-grow">
       <!-- Hero -->
       <HeroSection
-        :company-info="companyInfo"
+        :site="site"
         :loading="loading"
         @open-quote="openQuoteModal('')"
       />
 
       <!-- Giới thiệu -->
       <AboutSection
-        :company-info="companyInfo"
+        :company="company"
         :loading="loading"
       />
 
       <!-- Sản phẩm -->
       <ProductsSection
         :products="products"
+        :categories="categories"
         :loading="loading"
         @select-product="openQuoteModal"
       />
@@ -132,7 +145,7 @@ onMounted(() => {
 
       <!-- Liên hệ & Bản đồ -->
       <ContactSection
-        :company-info="companyInfo"
+        :contact="contact"
         :loading="loading"
         @open-quote="openQuoteModal('')"
       />
@@ -140,7 +153,9 @@ onMounted(() => {
 
     <!-- Footer -->
     <FooterSection
-      :company-info="companyInfo"
+      :site="site"
+      :company="company"
+      :contact="contact"
     />
 
     <!-- Quote Modal -->

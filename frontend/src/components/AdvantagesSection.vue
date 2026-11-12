@@ -1,10 +1,33 @@
 <script setup lang="ts">
-import type { Advantage } from '@/types/api'
+import type { AdvantageResponse } from '@/types/api'
 
 defineProps<{
-  advantages: Advantage[]
+  advantages: AdvantageResponse[]
   loading?: boolean
 }>()
+
+function getIconClass(iconKey?: string | null): string {
+  if (!iconKey) return 'fas fa-award'
+  switch (iconKey.toLowerCase()) {
+    case 'handshake':
+    case 'trust':
+      return 'fas fa-handshake'
+    case 'tags':
+    case 'price':
+    case 'discount':
+      return 'fas fa-tags'
+    case 'truck':
+    case 'delivery':
+    case 'fast':
+      return 'fas fa-truck-ramp-box'
+    case 'warehouse':
+    case 'stock':
+    case 'factory':
+      return 'fas fa-warehouse'
+    default:
+      return 'fas fa-check-circle'
+  }
+}
 </script>
 
 <template>
@@ -38,7 +61,7 @@ defineProps<{
           class="bg-gray-50 p-6 rounded-xl card-shadow text-center transition-all hover:shadow-xl hover:-translate-y-1 duration-300 border-b-4 border-[#2c7a5e] flex flex-col justify-start"
         >
           <div class="w-16 h-16 bg-[#1e5a6b]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#1e5a6b]">
-            <i :class="adv.icon || 'fas fa-check-circle'" class="text-3xl"></i>
+            <i :class="getIconClass(adv.iconKey)" class="text-3xl"></i>
           </div>
           <h3 class="text-lg md:text-xl font-bold text-gray-800">
             {{ adv.title }}

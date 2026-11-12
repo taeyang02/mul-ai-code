@@ -1,15 +1,20 @@
 import axios, { type AxiosError } from 'axios'
 import type {
-  ApiResponse,
-  CompanyInfo,
-  Advantage,
-  Product,
-  QuoteRequestPayload,
-  QuoteRequestResult,
-  ApiErrorResponse
+  SiteResponse,
+  CompanyResponse,
+  CategoryResponse,
+  ProductResponse,
+  ProductPageResponse,
+  AdvantageResponse,
+  ContactResponse,
+  QuoteRequestCreate,
+  QuoteRequestResponse,
+  ErrorResponse
 } from '@/types/api'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+// Format baseURL ensuring /api/v1 prefix per OpenAPI spec
+const rawBase = import.meta.env.VITE_API_BASE_URL || '/api/v1'
+const baseURL = rawBase.endsWith('/api/v1') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api/v1`
 
 export const apiClient = axios.create({
   baseURL,
@@ -20,82 +25,89 @@ export const apiClient = axios.create({
   timeout: 10000,
 })
 
-// Unwraps response data supporting both { success: true, data: T } and direct T
-function unwrapData<T>(res: { data: any }): T {
-  if (res.data && typeof res.data === 'object' && 'data' in res.data && 'success' in res.data) {
-    return (res.data as ApiResponse<T>).data
-  }
-  return res.data as T
-}
-
 export const apiService = {
-  async getCompanyInfo(): Promise<CompanyInfo> {
-    try {
-      const res = await apiClient.get<ApiResponse<CompanyInfo> | CompanyInfo>('/company')
-      return unwrapData<CompanyInfo>(res)
-    } catch (err) {
-      // Fallback try /site if backend routes company info at /site
-      try {
-        const resSite = await apiClient.get<ApiResponse<CompanyInfo> | CompanyInfo>('/site')
-        return unwrapData<CompanyInfo>(resSite)
-      } catch {
-        throw normalizeApiError(err)
-      }
-    }
+  async getSite(): Promise<SiteResponse> {
+    const res = await apiClient.get<SiteResponse>('/site')
+    return res.data
   },
 
-  async getAdvantages(): Promise<Advantage[]> {
-    try {
-      const res = await apiClient.get<ApiResponse<Advantage[]> | Advantage[]>('/site/advantages')
-      return unwrapData<Advantage[]>(res)
-    } catch (err) {
-      throw normalizeApiError(err)
-    }
+  async getCompany(): Promise<CompanyResponse> {
+    const res = await apiClient.get<CompanyResponse>('/company')
+    return res.data
   },
 
-  async getProducts(): Promise<Product[]> {
-    try {
-      const res = await apiClient.get<ApiResponse<Product[]> | Product[]>('/products')
-      return unwrapData<Product[]>(res)
-    } catch (err) {
-      throw normalizeApiError(err)
-    }
+  async getCategories(): Promise<CategoryResponse[]> {
+    const res = await apiClient.get<CategoryResponse[]>('/categories')
+    return res.data
   },
 
-  async submitQuoteRequest(payload: QuoteRequestPayload): Promise<QuoteRequestResult> {
-    try {
-      const res = await apiClient.post<ApiResponse<QuoteRequestResult> | QuoteRequestResult>('/quote-requests', payload)
-      return unwrapData<QuoteRequestResult>(res)
-    } catch (err) {
-      throw normalizeApiError(err)
-    }
+  async getProducts(params?: {
+    page?: number
+    size?: number
+    category?: string
+    featured?: boolean
+    q?: string
+  }): Promise<ProductPageResponse> {
+    const res = await apiClient.get<ProductPageResponse>('/products', { params })
+    return res.data
+  },
+
+  async getProduct(id: string): Promise<ProductResponse> {
+    const res = await apiClient.get<ProductResponse>(`/products/${id}`)
+    return res.data
+  },
+
+  async getAdvantages(): Promise<AdvantageResponse[]> {
+    const res = await apiClient.get<AdvantageResponse[]>('/site/advantages')
+    return res.data
+  },
+
+  async getContact(): Promise<ContactResponse> {
+    const res = await apiClient.get<ContactResponse>('/contact')
+    return res.data
+  },
+
+  async createQuoteRequest(payload: QuoteRequestCreate): Promise<QuoteRequestResponse> {
+    const res = await apiClient.post<QuoteRequestResponse>('/quote-requests', payload)
+    return res.data
   },
 }
 
-export function normalizeApiError(error: unknown): ApiErrorResponse {
+export function parseApiError(error: unknown): ErrorResponse {
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<any>
+    const axiosError = error as AxiosError<ErrorResponse>
     if (axiosError.response?.data) {
       const data = axiosError.response.data
       if (typeof data === 'object') {
         return {
-          success: false,
+          timestamp: data.timestamp || new Date().toISOString(),
+          status: data.status || axiosError.response.status,
+          error: data.error || axiosError.message,
           code: data.code || `HTTP_${axiosError.response.status}`,
           message: data.message || axiosError.message,
-          errors: data.errors || [],
-          timestamp: data.timestamp,
+          path: data.path || '',
+          details: data.details || [],
         }
       }
     }
     return {
-      success: false,
+      timestamp: new Date().toISOString(),
+      status: axiosError.response?.status || 500,
+      error: 'Network / Client Error',
       code: `HTTP_${axiosError.response?.status || 'NETWORK_ERROR'}`,
-      message: axiosError.message || 'Không thể kết nối tới máy chủ',
+      message: axiosError.message || 'Không thể kết nối tới Backend API',
+      path: axiosError.config?.url || '',
+      details: [],
     }
   }
+
   return {
-    success: false,
+    timestamp: new Date().toISOString(),
+    status: 500,
+    error: 'Internal Error',
     code: 'UNKNOWN_ERROR',
-    message: error instanceof Error ? error.message : 'Đã có lỗi xảy ra',
+    message: error instanceof Error ? error.message : 'Đã có lỗi không xác định xảy ra',
+    path: '',
+    details: [],
   }
 }
