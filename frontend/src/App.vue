@@ -172,7 +172,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans">
+  <div class="min-h-screen flex flex-col bg-gray-50 text-gray-800 font-sans overflow-x-hidden w-full">
     <!-- Header -->
     <HeaderNav
       :site="site"
