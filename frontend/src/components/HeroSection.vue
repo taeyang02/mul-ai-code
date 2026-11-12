@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import type { SiteResponse } from '@/types/api'
+import type { SiteResponse, ErrorResponse } from '@/types/api'
+import StatusAlert from '@/components/StatusAlert.vue'
 
 defineProps<{
   site: SiteResponse | null
   loading?: boolean
+  error?: ErrorResponse | null
 }>()
 
 const emit = defineEmits<{
   (e: 'openQuote'): void
+  (e: 'retry'): void
 }>()
 </script>
 
@@ -17,6 +20,17 @@ const emit = defineEmits<{
     
     <div class="container mx-auto px-5 md:px-8 py-16 md:py-24 lg:py-28 relative z-10">
       <div class="max-w-3xl">
+        <!-- Section Error State with Retry Button -->
+        <div v-if="error" class="mb-8">
+          <StatusAlert
+            type="error"
+            title="Lỗi tải thông tin trang chủ"
+            :message="error.message || 'Không thể lấy thông tin trang chủ từ máy chủ.'"
+            retry-text="Thử tải lại"
+            @retry="emit('retry')"
+          />
+        </div>
+
         <!-- Tagline badge from Site API -->
         <span
           v-if="site?.tagline"

@@ -39,6 +39,7 @@ const loadingContact = ref(true)
 // Granular error states (per-section/per-API)
 const errorSite = ref<ErrorResponse | null>(null)
 const errorCompany = ref<ErrorResponse | null>(null)
+const errorCategories = ref<ErrorResponse | null>(null)
 const errorProducts = ref<ErrorResponse | null>(null)
 const errorAdvantages = ref<ErrorResponse | null>(null)
 const errorContact = ref<ErrorResponse | null>(null)
@@ -109,10 +110,11 @@ async function fetchCompany() {
 
 async function fetchCategories() {
   loadingCategories.value = true
+  errorCategories.value = null
   try {
     categories.value = await apiService.getCategories()
   } catch (err) {
-    console.warn('Failed to fetch categories:', err)
+    errorCategories.value = parseApiError(err)
   } finally {
     loadingCategories.value = false
   }
@@ -191,11 +193,13 @@ onMounted(() => {
 
     <!-- Main Content -->
     <main class="flex-grow">
-      <!-- Hero -->
+      <!-- Hero (With isolated error & retry) -->
       <HeroSection
         :site="site"
         :loading="loadingSite"
+        :error="errorSite"
         @open-quote="openQuoteModal('')"
+        @retry="fetchSite"
       />
 
       <!-- Giới thiệu (With isolated error & retry) -->
@@ -212,14 +216,18 @@ onMounted(() => {
         :categories="categories"
         :loading="loadingProducts"
         :error="errorProducts"
+        :error-categories="errorCategories"
         @select-product="openQuoteModal"
         @retry="fetchProducts"
+        @retry-categories="fetchCategories"
       />
 
-      <!-- Lợi thế cạnh tranh -->
+      <!-- Lợi thế cạnh tranh (With isolated error & retry) -->
       <AdvantagesSection
         :advantages="advantages"
         :loading="loadingAdvantages"
+        :error="errorAdvantages"
+        @retry="fetchAdvantages"
       />
 
       <!-- Liên hệ & Bản đồ (With isolated error & retry) -->

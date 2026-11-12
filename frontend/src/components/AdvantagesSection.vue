@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import type { AdvantageResponse } from '@/types/api'
+import type { AdvantageResponse, ErrorResponse } from '@/types/api'
+import StatusAlert from '@/components/StatusAlert.vue'
 
 defineProps<{
   advantages: AdvantageResponse[]
   loading?: boolean
+  error?: ErrorResponse | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'retry'): void
 }>()
 
 function getIconClass(iconKey?: string | null): string {
@@ -44,8 +50,19 @@ function getIconClass(iconKey?: string | null): string {
         <div class="w-16 h-1 bg-[#2c7a5e] mx-auto mt-4 rounded-full"></div>
       </div>
 
+      <!-- Section Error State with Retry Button -->
+      <div v-if="error" class="max-w-2xl mx-auto my-6">
+        <StatusAlert
+          type="error"
+          title="Lỗi tải lợi thế cạnh tranh"
+          :message="error.message || 'Không thể lấy thông tin lợi thế cạnh tranh từ máy chủ.'"
+          retry-text="Thử tải lại"
+          @retry="emit('retry')"
+        />
+      </div>
+
       <!-- Loading State -->
-      <div v-if="loading && advantages.length === 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div v-else-if="loading && advantages.length === 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div v-for="i in 4" :key="i" class="bg-gray-50 p-6 rounded-xl animate-pulse">
           <div class="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
           <div class="h-5 bg-gray-200 rounded w-2/3 mx-auto mb-2"></div>
@@ -54,7 +71,7 @@ function getIconClass(iconKey?: string | null): string {
       </div>
 
       <!-- Grid Cards -->
-      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-7">
+      <div v-else-if="advantages.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-7">
         <div
           v-for="adv in advantages"
           :key="adv.id"

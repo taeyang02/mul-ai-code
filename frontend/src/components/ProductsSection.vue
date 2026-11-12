@@ -8,11 +8,13 @@ const props = defineProps<{
   categories?: CategoryResponse[]
   loading?: boolean
   error?: ErrorResponse | null
+  errorCategories?: ErrorResponse | null
 }>()
 
 const emit = defineEmits<{
   (e: 'selectProduct', productName: string): void
   (e: 'retry'): void
+  (e: 'retryCategories'): void
 }>()
 
 const selectedCategory = ref<string>('all')
@@ -52,8 +54,19 @@ const filteredProducts = computed(() => {
         />
       </div>
 
+      <!-- Category Filter Loading Error with Retry Button -->
+      <div v-if="errorCategories && !error" class="max-w-xl mx-auto mb-6">
+        <StatusAlert
+          type="warning"
+          title="Lỗi tải danh mục phân loại"
+          :message="errorCategories.message || 'Không thể kết nối máy chủ để lấy bộ lọc danh mục.'"
+          retry-text="Thử tải lại danh mục"
+          @retry="emit('retryCategories')"
+        />
+      </div>
+
       <!-- Category Filter Tabs (if categories exist and no error) -->
-      <div v-else-if="categories && categories.length > 0 && products.length > 0" class="flex flex-wrap justify-center gap-2.5 mb-10">
+      <div v-else-if="categories && categories.length > 0 && products.length > 0 && !error" class="flex flex-wrap justify-center gap-2.5 mb-10">
         <button
           type="button"
           @click="selectedCategory = 'all'"

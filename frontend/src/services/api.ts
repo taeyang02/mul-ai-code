@@ -48,26 +48,6 @@ export const apiService = {
     featured?: boolean
     q?: string
   }): Promise<ProductPageResponse> {
-    // Verification hook for testing partial error handling:
-    // Triggers if window.__SIMULATE_PRODUCTS_ERROR is true or URL query simulate_error=products
-    const isSimulatedError =
-      (typeof window !== 'undefined' && (window as any).__SIMULATE_PRODUCTS_ERROR === true) ||
-      (typeof window !== 'undefined' &&
-        new URLSearchParams(window.location.search).get('simulate_error') === 'products')
-
-    if (isSimulatedError) {
-      const simError: ErrorResponse = {
-        timestamp: new Date().toISOString(),
-        status: 500,
-        error: 'Internal Server Error',
-        code: 'INTERNAL_ERROR',
-        message: 'Mô phỏng lỗi máy chủ: Không thể tải danh mục sản phẩm (HTTP 500).',
-        path: '/api/v1/products',
-        details: [],
-      }
-      return Promise.reject(simError)
-    }
-
     const res = await apiClient.get<ProductPageResponse>('/products', { params })
     return res.data
   },
