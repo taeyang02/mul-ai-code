@@ -322,6 +322,123 @@ async function suiteMobileDrawer(browser) {
   await context.close()
 }
 
+async function focusInside(locator) {
+  return locator.evaluate((el) => el.contains(document.activeElement) || el === document.activeElement)
+}
+
+async function activeTagName(page) {
+  return page.evaluate(() => {
+    const el = document.activeElement
+    if (!el) return null
+    return {
+      tag: el.tagName,
+      id: el.id || null,
+      name: el.getAttribute('name'),
+      aria: el.getAttribute('aria-label'),
+      text: (el.textContent || '').trim().slice(0, 40),
+    }
+  })
+}
+
+async function suiteKeyboardA11y(browser) {
+  log('=== SUITE: keyboard a11y modal + drawer ===')
+
+  // --- Quote modal: Tab / Shift+Tab trap, Escape, focus restore ---
+  {
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+    const page = await context.newPage()
+    await waitForApp(page)
+
+    const openBtn = page.getByRole('button', { name: /báo giá|Yêu cầu/i }).first()
+    assert((await openBtn.count()) > 0, 'keyboard modal: quote CTA missing')
+    await openBtn.focus()
+    const openerBefore = await activeTagName(page)
+    await openBtn.click()
+    await page.waitForTimeout(400)
+
+    const dialog = page.getByRole('dialog').first()
+    assert(await dialog.isVisible(), 'keyboard modal: role=dialog not visible')
+    await page.waitForTimeout(200)
+    const focusedInside = await focusInside(dialog)
+    assert(focusedInside, `keyboard modal: initial focus not inside dialog (${JSON.stringify(await activeTagName(page))})`)
+    log(`[keyboard-modal] initial focus inside dialog: ${JSON.stringify(await activeTagName(page))}`)
+
+    // Tab wrap: move to last focusable then Tab → first
+    const focusables = dialog.locator(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    const n = await focusables.count()
+    assert(n >= 2, `keyboard modal: expected >=2 focusables got ${n}`)
+    await focusables.nth(n - 1).focus()
+    await page.keyboard.press('Tab')
+    const afterTabWrap = await focusables.nth(0).evaluate((el) => el === document.activeElement)
+    assert(afterTabWrap, `keyboard modal: Tab from last did not wrap to first (${JSON.stringify(await activeTagName(page))})`)
+    log('[keyboard-modal] Tab wrap last→first OK')
+
+    await focusables.nth(0).focus()
+    await page.keyboard.press('Shift+Tab')
+    const afterShiftWrap = await focusables.nth(n - 1).evaluate((el) => el === document.activeElement)
+    assert(afterShiftWrap, `keyboard modal: Shift+Tab from first did not wrap to last (${JSON.stringify(await activeTagName(page))})`)
+    log('[keyboard-modal] Shift+Tab wrap first→last OK')
+
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    assert(!(await dialog.isVisible().catch(() => false)), 'keyboard modal: Escape did not close dialog')
+    const restored = await openBtn.evaluate((el) => el === document.activeElement)
+    assert(restored, `keyboard modal: focus not restored to opener (before=${JSON.stringify(openerBefore)} after=${JSON.stringify(await activeTagName(page))})`)
+    log('[keyboard-modal] Escape + focus restore OK')
+    await page.screenshot({ path: path.join(SHOT_DIR, 'keyboard-modal-closed.png') })
+    await context.close()
+  }
+
+  // --- Mobile drawer: Tab / Shift+Tab trap, Escape, focus restore ---
+  {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 } })
+    const page = await context.newPage()
+    await waitForApp(page)
+
+    const toggle = page.getByRole('button', { name: /Toggle Navigation Menu/i })
+    assert((await toggle.count()) > 0, 'keyboard drawer: toggle missing')
+    await toggle.focus()
+    await toggle.click()
+    await page.waitForTimeout(400)
+
+    const drawer = page.getByRole('dialog').filter({ hasText: /Trang chủ|Sản phẩm|Nhận báo giá/i }).first()
+    assert(await drawer.isVisible(), 'keyboard drawer: role=dialog not visible')
+    const focusedInside = await focusInside(drawer)
+    assert(focusedInside, `keyboard drawer: initial focus not inside drawer (${JSON.stringify(await activeTagName(page))})`)
+    log(`[keyboard-drawer] initial focus inside drawer: ${JSON.stringify(await activeTagName(page))}`)
+
+    const focusables = drawer.locator(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    const n = await focusables.count()
+    assert(n >= 2, `keyboard drawer: expected >=2 focusables got ${n}`)
+    await focusables.nth(n - 1).focus()
+    await page.keyboard.press('Tab')
+    const afterTabWrap = await focusables.nth(0).evaluate((el) => el === document.activeElement)
+    assert(afterTabWrap, `keyboard drawer: Tab from last did not wrap to first (${JSON.stringify(await activeTagName(page))})`)
+    log('[keyboard-drawer] Tab wrap last→first OK')
+
+    await focusables.nth(0).focus()
+    await page.keyboard.press('Shift+Tab')
+    const afterShiftWrap = await focusables.nth(n - 1).evaluate((el) => el === document.activeElement)
+    assert(afterShiftWrap, `keyboard drawer: Shift+Tab from first did not wrap to last (${JSON.stringify(await activeTagName(page))})`)
+    log('[keyboard-drawer] Shift+Tab wrap first→last OK')
+
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(400)
+    assert(!(await drawer.isVisible().catch(() => false)), 'keyboard drawer: Escape did not close')
+    const restored = await toggle.evaluate((el) => el === document.activeElement)
+    assert(restored, `keyboard drawer: focus not restored to toggle (${JSON.stringify(await activeTagName(page))})`)
+    log('[keyboard-drawer] Escape + focus restore OK')
+    await page.screenshot({ path: path.join(SHOT_DIR, 'keyboard-drawer-closed.png') })
+    await context.close()
+  }
+
+  log('[keyboard] modal + drawer Tab/Shift+Tab/Escape/focus-restore OK')
+}
+
 async function suitePartialFailure(browser, endpointPath, sectionHint) {
   log(`=== SUITE: partial failure ${endpointPath} ===`)
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 } })
@@ -521,6 +638,7 @@ async function main() {
   try {
     await suiteViewports(browser)
     await suiteMobileDrawer(browser)
+    await suiteKeyboardA11y(browser)
     await suitePartialFailure(browser, '/api/v1/products', 'products')
     await suitePartialFailure(browser, '/api/v1/site/advantages', 'advantages')
     await suitePartialFailure(browser, '/api/v1/categories', 'categories')
