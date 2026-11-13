@@ -65,8 +65,16 @@ function findChromeExecutable() {
   if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) {
     return process.env.CHROME_PATH
   }
+  try {
+    const pwPath = chromium.executablePath()
+    if (pwPath && fs.existsSync(pwPath)) return pwPath
+  } catch {
+    /* ignore */
+  }
   const candidates = [
     process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
+    '/home/runner/.cache/ms-playwright/chromium_headless_shell-1148/chrome-linux/headless_shell',
+    '/home/runner/.cache/ms-playwright/chromium-1148/chrome-linux/chrome',
     '/home/multica/.cache/ms-playwright/chromium_headless_shell-1148/chrome-linux/headless_shell',
     '/home/multica/.cache/ms-playwright/chromium-1148/chrome-linux/chrome',
     '/home/multica/.cache/ms-playwright/chromium_headless_shell-1254/chrome-headless-shell-linux64/chrome-headless-shell',

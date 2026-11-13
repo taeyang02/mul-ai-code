@@ -115,7 +115,7 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     const syntheticEmail = `citest_${timestamp}@example.com`
     const syntheticMessage = `CI E2E synthetic verification marker [${marker}]`
 
-    await page.fill('#quote-fullname', syntheticName)
+    await page.fill('#quote-fullname, #quote-full-name', syntheticName)
     await page.fill('#quote-phone', syntheticPhone)
     await page.fill('#quote-email', syntheticEmail)
     await page.fill('#quote-message', syntheticMessage)
@@ -136,7 +136,7 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     expect(body.id).toBeTruthy()
 
     // Expect success message
-    const successAlert = modal.locator('[role="alert"]').filter({ hasText: /thành công/i }).first()
+    const successAlert = modal.locator('[role="alert"], [role="status"]').filter({ hasText: /thành công/i }).first()
     await expect(successAlert).toBeVisible({ timeout: 15000 })
 
     // Shared CI artifact contract for scripts/ci/db-proof.sh

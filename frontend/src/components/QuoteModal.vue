@@ -236,8 +236,9 @@ async function handleSubmit() {
       <!-- Success feedback -->
       <div
         v-if="successMessage"
-        role="status"
+        role="alert"
         aria-live="polite"
+        data-testid="quote-success-alert"
         class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm flex items-start gap-3"
       >
         <i class="fas fa-check-circle text-emerald-600 text-xl mt-0.5" aria-hidden="true"></i>
@@ -280,11 +281,12 @@ async function handleSubmit() {
 
         <!-- Full Name -->
         <div>
-          <label for="quote-full-name" class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
+          <label for="quote-fullname" class="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
             Họ và tên <span class="text-red-500">*</span>
           </label>
           <input
-            id="quote-full-name"
+            id="quote-fullname"
+            name="fullName"
             ref="firstInputRef"
             v-model="form.fullName"
             type="text"
