@@ -18,9 +18,23 @@ docs/
   architecture.md
   database.md
   api-contract.yaml
+  ci/INTERFACE.md        Shared CI env/commands/artifact schema
+.github/workflows/       GitHub-hosted multica-ci (not for Zenon)
+scripts/ci/              Readiness, db-proof, artifact publisher
+tools/multica-ci/        Read-only CI retrieval CLI
 compose.yaml             db + backend + frontend
 .env.example
 ```
+
+## Shared GitHub CI (preferred for E2E)
+
+Heavy Chromium / Postgres E2E runs on **GitHub-hosted Actions**, not inside AI runtimes.
+
+- Workflow: `.github/workflows/multica-ci.yml`
+- Interface lock: `docs/ci/INTERFACE.md` (`BASE_URL`, `API_BASE`, `CI_ARTIFACT_DIR`; FE scripts `typecheck` / `lint` / `test:unit` / `build` / `test:ci`)
+- Retrieval CLI: `node tools/multica-ci/bin/multica-ci.mjs status|results|download|review RUN_ID --repo taeyang02/mul-ai-code --sha <commit>`
+
+Local AI runtimes should not install Chromium or re-run full CI workloads; use `multica-ci` against a real Actions run ID once credentials/push are available.
 
 ## Prerequisites
 

@@ -24,3 +24,7 @@ frontend/.vite/
 *.log
 coverage/
 .nyc_output/
+
+ci-artifacts/
+ci-artifacts-selftest/
+.multica-ci-results/

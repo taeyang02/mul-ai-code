@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "repository": "taeyang02/mul-ai-code",
+  "branch": "ci/multica-shared-testing",
+  "commit_sha": "abc123def4567890abc123def4567890abc123de",
+  "run_id": "fixture-run",
+  "run_attempt": 1,
+  "timestamp": "2026-11-13T00:00:00.000Z",
+  "jobs": {
+    "backend": { "status": "completed", "conclusion": "success", "note": "fixture" },
+    "frontend": { "status": "completed", "conclusion": "failure", "note": "typecheck pending Antigravity" },
+    "e2e": { "status": "completed", "conclusion": "NOT_RUN", "note": "fixture — no real browser" },
+    "artifacts": { "status": "completed", "conclusion": "success", "note": "fixture" }
+  },
+  "files": [
+    {
+      "path": "build-summary.md",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    }
+  ]
+}
