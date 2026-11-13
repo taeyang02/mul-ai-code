@@ -55,13 +55,19 @@ manifest.json
 
 `manifest.json` requires `schema_version=1` plus `repository`, `branch`, `commit_sha`, `run_id`, `run_attempt`, `timestamp`, `jobs`, and a file inventory with checksums when packaged.
 
-## DB proof hand-off (e2e → `scripts/ci/db-proof.sh`)
+## DB proof hand-off → `scripts/ci/db-proof.sh`
 
-After a synthetic quote POST succeeds, Playwright writes:
+Evidence files (required for quote half of the gate):
 
 | File | Content |
 |---|---|
 | `$CI_ARTIFACT_DIR/db-proof/quote-id.txt` | UUID from `201` response body `id` |
 | `$CI_ARTIFACT_DIR/db-proof/quote-marker.txt` | Marker substring embedded in the quote `message` |
 
+**Writers (both produce real API/DB rows — never fabricate PASS):**
+
+1. `scripts/ci/seed-quote-proof.sh` — CI step after e2e (runs `if: always()`): `POST /api/v1/quote-requests` against the live backend; independent of Playwright.
+2. Playwright `frontend/e2e/fullstack-e2e.spec.ts` — also writes the same files when the UI quote flow returns `201` (FE ownership; does not replace the API seed).
+
 `db-proof.sh` records `migration_status` and `quote_status` separately in `result.txt`. **Overall `status=PASS` (exit 0) only when both are PASS.** Migration success requires a successful structured flyway query with enough `success=true` rows — never by grepping the table name. Missing DB, missing quote files, empty/failed history, or no matching quote row ⇒ overall `FAIL` (exit 1) and blocks the CI gate. Logic self-test: `scripts/ci/db-proof-selftest.sh` (psql stub; not a real CI run).
+

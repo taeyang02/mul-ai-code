@@ -222,6 +222,18 @@ jobs:
       - name: Install psql client
         if: always()
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Seed quote proof via API (real POST)
+        if: always()
+        env:
+          CI_ARTIFACT_DIR: ${{ github.workspace }}/ci-artifacts
+          API_BASE: http://127.0.0.1:8080/api/v1
+        run: |
+          set -euo pipefail
+          mkdir -p "$CI_ARTIFACT_DIR/db-proof"
+          # Independent of Playwright: POST creates a real quote_requests row + id/marker files.
+          # db-proof.sh still verifies Flyway + parameterized lookup (never invents PASS).
+          chmod +x ./scripts/ci/seed-quote-proof.sh
+          ./scripts/ci/seed-quote-proof.sh
       - name: DB proof (migrations + quote id/marker)
         if: always()
         env:
