@@ -18,6 +18,25 @@ async function setupNetworkInterception(page: any) {
           address: 'Gia Lâm, Bắc Giang',
           seoTitle: 'Thép Thanh An Bắc Giang | Phân Phối Thép Chính Hãng',
           seoDescription: 'Đại lý phân phối thép xây dựng chính hãng tại Bắc Giang',
+          navItems: [
+            { label: 'Trang chủ', href: '#home' },
+            { label: 'Sản phẩm', href: '#products' },
+            { label: 'Liên hệ', href: '#contact' },
+          ],
+        }),
+      })
+    }
+
+    if (p.endsWith('/contact')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          hotlineDisplay: '0393.123.456',
+          hotlineE164: '0393123456',
+          hotlineContactName: 'Tư vấn',
+          email: 'thepthanhanbg@gmail.com',
+          addressNew: 'Gia Lâm, Bắc Giang',
         }),
       })
     }

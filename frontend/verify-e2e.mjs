@@ -162,16 +162,30 @@ async function launchBrowser() {
   return chromium.launch(opts)
 }
 
-async function waitForApp(page) {
+async function waitForApp(page, { requireBrand = true } = {}) {
   // domcontentloaded only: Vite HMR / lingering third-party requests can leave networkidle/load pending.
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
   await page.waitForSelector('#app', { timeout: 15000 })
   // Wait for API-hydrated brand text (attached). Playwright "visible" can be false when webfonts
   // leave a temporary 0×0 box under this environment's PID/shm pressure.
+  // When /api/v1/site is intentionally faulted, brand never hydrates — wait for retry UI instead.
+  if (requireBrand) {
+    await page.waitForFunction(
+      () => {
+        const h1 = document.querySelector('header h1')
+        return !!(h1 && /Thanh An Bắc Giang/i.test(h1.textContent || ''))
+      },
+      { timeout: 30000 }
+    )
+    return
+  }
   await page.waitForFunction(
     () => {
       const h1 = document.querySelector('header h1')
-      return !!(h1 && /Thanh An Bắc Giang/i.test(h1.textContent || ''))
+      if (h1 && /Thanh An Bắc Giang/i.test(h1.textContent || '')) return true
+      return Array.from(document.querySelectorAll('button')).some((b) =>
+        /Thử tải lại|Thử lại/i.test(b.textContent || '')
+      )
     },
     { timeout: 30000 }
   )
@@ -483,7 +497,7 @@ async function suitePartialFailure(browser, endpointPath, sectionHint) {
     }
   })
 
-  await waitForApp(page)
+  await waitForApp(page, { requireBrand: endpointPath !== '/api/v1/site' })
 
   // Unrelated content must remain when only one endpoint fails
   if (endpointPath !== '/api/v1/site') {

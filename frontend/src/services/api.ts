@@ -74,26 +74,34 @@ export const apiService = {
 }
 
 export function parseApiError(error: unknown): ErrorResponse {
-  if (error && typeof error === 'object' && 'code' in error && 'message' in error && 'status' in error) {
-    return error as ErrorResponse
-  }
-
+  // Axios 1.x puts top-level `code` / `message` / `status` on AxiosError itself.
+  // Check Axios first so we never treat the transport error as an API ErrorResponse
+  // (that previously surfaced "Request failed with status code 500" and dropped body.message).
   if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<ErrorResponse>
-    if (axiosError.response?.data) {
-      const data = axiosError.response.data
-      if (typeof data === 'object') {
-        return {
-          timestamp: data.timestamp || new Date().toISOString(),
-          status: data.status || axiosError.response.status,
-          error: data.error || axiosError.message,
-          code: data.code || `HTTP_${axiosError.response.status}`,
-          message: data.message || axiosError.message,
-          path: data.path || '',
-          details: data.details || [],
-        }
+    const axiosError = error as AxiosError<ErrorResponse | string>
+    let data: ErrorResponse | string | undefined | null = axiosError.response?.data
+
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data) as ErrorResponse
+      } catch {
+        data = undefined
       }
     }
+
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      const apiMessage = typeof data.message === 'string' ? data.message.trim() : ''
+      return {
+        timestamp: data.timestamp || new Date().toISOString(),
+        status: data.status || axiosError.response?.status || 500,
+        error: data.error || axiosError.message,
+        code: data.code || `HTTP_${axiosError.response?.status || 'NETWORK_ERROR'}`,
+        message: apiMessage || axiosError.message || 'Không thể kết nối tới Backend API',
+        path: data.path || axiosError.config?.url || '',
+        details: data.details || [],
+      }
+    }
+
     return {
       timestamp: new Date().toISOString(),
       status: axiosError.response?.status || 500,
@@ -103,6 +111,10 @@ export function parseApiError(error: unknown): ErrorResponse {
       path: axiosError.config?.url || '',
       details: [],
     }
+  }
+
+  if (error && typeof error === 'object' && 'code' in error && 'message' in error && 'status' in error) {
+    return error as ErrorResponse
   }
 
   return {
