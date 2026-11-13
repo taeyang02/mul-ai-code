@@ -87,11 +87,18 @@ prove_quote_dir() {
     echo "FAIL"
     return 0
   fi
+  # C3: :'qid' / :'qmark' are psql client interpolations — they only work via
+  # stdin or -f, never via -c (psql sends -c straight to the server).
+  # Keep -v + quoted-literal form; do not concatenate raw id/marker into SQL.
   set +e
   psql_exec -At \
     -v qid="$QID" -v qmark="$QMARK" \
-    -c "SELECT id::text || '|' || left(coalesce(message,''), 160) FROM quote_requests WHERE id = :'qid'::uuid AND position(:'qmark' in coalesce(message,'')) > 0;" \
-    >"$dir/quote-lookup.txt" 2>"$dir/quote-lookup.err"
+    >"$dir/quote-lookup.txt" 2>"$dir/quote-lookup.err" <<'SQL'
+SELECT id::text || '|' || left(coalesce(message,''), 160)
+FROM quote_requests
+WHERE id = :'qid'::uuid
+  AND position(:'qmark' in coalesce(message,'')) > 0;
+SQL
   local Q_RC=$?
   set -e
   if [[ "$Q_RC" -ne 0 ]]; then

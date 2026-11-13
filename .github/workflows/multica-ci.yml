@@ -233,6 +233,7 @@ jobs:
           chmod +x ./scripts/ci/seed-quote-proof.sh
           ./scripts/ci/seed-quote-proof.sh
       - name: DB proof (migrations + quote id/marker)
+        id: db_proof
         if: always()
         env:
           CI_ARTIFACT_DIR: ${{ github.workspace }}/ci-artifacts
@@ -243,9 +244,23 @@ jobs:
           PGDATABASE: thanhan
         run: |
           set -euo pipefail
-          mkdir -p "$CI_ARTIFACT_DIR/db-proof/api" "$CI_ARTIFACT_DIR/db-proof/ui"
+          mkdir -p "$CI_ARTIFACT_DIR/db-proof/api" "$CI_ARTIFACT_DIR/db-proof/ui" "$CI_ARTIFACT_DIR/job-status"
           # Verifies api/ + ui/ separately; never invents PASS.
+          set +e
           ./scripts/ci/db-proof.sh
+          DB_RC=$?
+          set -e
+          # Separate analysis file — does not rewrite browser e2e.txt (C4).
+          {
+            echo "status=completed"
+            if [[ "$DB_RC" -eq 0 ]]; then
+              echo "conclusion=success"
+            else
+              echo "conclusion=failure"
+            fi
+            echo "note=db-proof_rc=${DB_RC}"
+          } >"$CI_ARTIFACT_DIR/job-status/db-proof.txt"
+          exit "$DB_RC"
       - name: Upload e2e artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -305,6 +320,10 @@ jobs:
           GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
+          # C4: whole-job authoritative conclusions (browser step file may still say success)
+          MULTICA_NEEDS_BACKEND_RESULT: ${{ needs.backend.result }}
+          MULTICA_NEEDS_FRONTEND_RESULT: ${{ needs.frontend.result }}
+          MULTICA_NEEDS_E2E_RESULT: ${{ needs.e2e.result }}
         run: node scripts/ci/publish-artifacts.mjs
       - name: Upload multica-ci-results
         if: always()

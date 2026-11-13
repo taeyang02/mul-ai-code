@@ -1,0 +1,17 @@
+{
+  "config": { "projects": [{ "name": "chromium" }] },
+  "suites": [
+    {
+      "title": "fullstack-e2e.spec.ts",
+      "specs": [
+        {
+          "title": "quote form submits and persists",
+          "ok": true,
+          "tests": [{ "projectName": "chromium", "results": [{ "status": "passed", "retry": 0 }] }]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": { "expected": 1, "unexpected": 0, "flaky": 0, "skipped": 0 }
+}

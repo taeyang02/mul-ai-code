@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Logic self-test for db-proof.sh using a local psql stub (no real DB / no network).
-# Fixtures validate classification only — they are NOT a substitute for GitHub CI results.
+# Fixtures validate classification + C3 stdin/-f variable path — NOT a substitute for GitHub CI.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -22,11 +22,28 @@ write_psql_stub() {
 set -euo pipefail
 MODE="$mode"
 SQL=""
+USED_C=0
 prev=""
+QID=""
+QMARK=""
 for a in "\$@"; do
-  if [[ "\$prev" == "-c" ]]; then SQL="\$a"; fi
+  if [[ "\$prev" == "-c" ]]; then
+    SQL="\$a"
+    USED_C=1
+  fi
+  case "\$a" in
+    qid=*) QID="\${a#qid=}" ;;
+    qmark=*) QMARK="\${a#qmark=}" ;;
+  esac
   prev="\$a"
 done
+
+# Prefer stdin when -c was not used (C3 path: variable interpolation via stdin/-f)
+if [[ "\$USED_C" -eq 0 ]]; then
+  if [[ ! -t 0 ]]; then
+    SQL="\$(cat)"
+  fi
+fi
 
 case "\$SQL" in
   "SELECT 1") echo "1"; exit 0 ;;
@@ -46,7 +63,7 @@ case "\$SQL" in
         echo "2|2|seed|f"
         exit 0
         ;;
-      ok_migrations|ok_all|quote_miss|ok_api_only|ok_api_ui|ui_miss_row)
+      ok_migrations|ok_all|quote_miss|ok_api_only|ok_api_ui|ui_miss_row|quote_marker_quote)
         echo "1|1|schema|t"
         echo "2|2|seed verified content|t"
         exit 0
@@ -57,16 +74,22 @@ esac
 
 case "\$SQL" in
   *"quote_requests"*)
-    QID=""
-    for a in "\$@"; do
-      case "\$a" in
-        qid=*) QID="\${a#qid=}" ;;
-      esac
-    done
+    # C3 regression guard: :'var' interpolation does not work with -c
+    if [[ "\$USED_C" -eq 1 ]]; then
+      echo "ERROR: quote lookup via -c cannot interpolate :'qid'/:'qmark' (use stdin/-f)" >&2
+      exit 42
+    fi
+    if [[ "\$SQL" != *":'qid'"* || "\$SQL" != *":'qmark'"* ]]; then
+      echo "ERROR: quote SQL must use :'qid' and :'qmark' client vars" >&2
+      exit 43
+    fi
+    if [[ -z "\$QID" || -z "\$QMARK" ]]; then
+      echo "ERROR: missing -v qid= / -v qmark=" >&2
+      exit 44
+    fi
     case "\$MODE" in
-      ok_all|mig_fail_quote_ok|ok_api_only|ok_api_ui)
-        if [[ -z "\$QID" ]]; then QID="11111111-1111-1111-1111-111111111111"; fi
-        echo "\$QID|marker matched"
+      ok_all|mig_fail_quote_ok|ok_api_only|ok_api_ui|quote_marker_quote)
+        echo "\$QID|marker matched (\$QMARK)"
         exit 0
         ;;
       ui_miss_row)
@@ -101,6 +124,8 @@ run_case() {
   local api_quote="$5"
   local ui_quote="$6"
   local e2e_conclusion="$7"
+  local api_marker="${8:-MARKER_API}"
+  local ui_marker="${9:-MARKER_UI}"
 
   write_psql_stub "$mode"
   local art="$BASE/case-$name"
@@ -115,13 +140,15 @@ run_case() {
   fi
   if [[ "$api_quote" == "yes" ]]; then
     echo "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" >"$art/db-proof/api/quote-id.txt"
-    echo "MARKER_API" >"$art/db-proof/api/quote-marker.txt"
+    printf '%s' "$api_marker" >"$art/db-proof/api/quote-marker.txt"
     echo "provenance=api-seed" >"$art/db-proof/api/provenance.txt"
   fi
   if [[ "$ui_quote" == "yes" ]]; then
     echo "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" >"$art/db-proof/ui/quote-id.txt"
-    echo "MARKER_UI" >"$art/db-proof/ui/quote-marker.txt"
-    echo "provenance=ui-playwright" >"$art/db-proof/ui/provenance.txt"
+    printf '%s' "$ui_marker" >"$art/db-proof/ui/quote-marker.txt"
+    cat >"$art/db-proof/ui/provenance.json" <<'JSON'
+{"source":"ui_playwright_e2e","id":"bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb","marker":"MARKER_UI","status":201}
+JSON
   fi
 
   set +e
@@ -161,6 +188,8 @@ run_case "e2e_success_missing_ui" "ok_api_only" "FAIL" 1 "yes" "no" "success"
 run_case "api_and_ui_ok" "ok_api_ui" "PASS" 0 "yes" "yes" "success"
 # UI files present but row miss → FAIL
 run_case "ui_row_miss" "ui_miss_row" "FAIL" 1 "yes" "yes" "success"
+# C3: marker with embedded single quote still uses -v + stdin :'qmark' (not -c)
+run_case "marker_with_single_quote" "quote_marker_quote" "PASS" 0 "yes" "yes" "success" "API's marker" "UI's marker"
 
 echo "summary pass=$PASS_N fail=$FAIL_N" | tee -a "$LOG"
 cp "$LOG" "$ROOT/scripts/ci/db-proof-selftest.log" 2>/dev/null || true
