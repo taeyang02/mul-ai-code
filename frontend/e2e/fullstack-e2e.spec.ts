@@ -2,11 +2,63 @@ import { test, expect, type Page } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'
+import { execSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 interface ViewportConfig {
   name: string
   width: number
   height: number
+}
+
+interface GitMetadata {
+  checkout_sha: string
+  source_head_sha: string
+  is_merge_commit: boolean
+  run_id: string
+  run_attempt: string
+}
+
+function resolveGitMetadata(): GitMetadata {
+  let checkoutSha = process.env.GITHUB_SHA || 'unknown'
+  let sourceHeadSha = checkoutSha
+  let isMergeCommit = false
+  const runId = process.env.GITHUB_RUN_ID || 'local'
+  const runAttempt = process.env.GITHUB_RUN_ATTEMPT || '1'
+
+  try {
+    const cwd = path.resolve(__dirname, '..')
+    const head = execSync('git rev-parse HEAD', { cwd, encoding: 'utf8' }).trim()
+    if (head) checkoutSha = head
+
+    const parentsRaw = execSync('git rev-parse HEAD^@', { cwd, encoding: 'utf8' }).trim()
+    const parents = parentsRaw ? parentsRaw.split(/\s+/) : []
+    if (parents.length >= 2) {
+      isMergeCommit = true
+      // In GitHub Actions PR merge commit (refs/pull/X/merge):
+      // Parent 0 = target branch (e.g. main)
+      // Parent 1 = PR source branch HEAD
+      sourceHeadSha = parents[1]
+    } else {
+      sourceHeadSha = checkoutSha
+    }
+  } catch {
+    if (process.env.PR_HEAD_SHA) {
+      sourceHeadSha = process.env.PR_HEAD_SHA
+      isMergeCommit = sourceHeadSha !== checkoutSha
+    }
+  }
+
+  return {
+    checkout_sha: checkoutSha,
+    source_head_sha: sourceHeadSha,
+    is_merge_commit: isMergeCommit,
+    run_id: runId,
+    run_attempt: runAttempt,
+  }
 }
 
 async function captureAcceptanceScreenshot(
@@ -19,13 +71,11 @@ async function captureAcceptanceScreenshot(
   const screenshotsDir = path.join(shotDir, 'screenshots')
   fs.mkdirSync(screenshotsDir, { recursive: true })
 
-  const runId = process.env.GITHUB_RUN_ID || 'local'
-  const runAttempt = process.env.GITHUB_RUN_ATTEMPT || '1'
-  const rawSha = process.env.GITHUB_SHA || 'local'
-  const shortSha = rawSha.slice(0, 7)
+  const gitMeta = resolveGitMetadata()
+  const shortSourceSha = gitMeta.source_head_sha.slice(0, 7)
 
   const canonicalName = `${label}-${viewport.name}-${viewport.width}x${viewport.height}.png`
-  const taggedName = `${label}-${viewport.name}-${viewport.width}x${viewport.height}-sha-${shortSha}-run-${runId}.png`
+  const taggedName = `${label}-${viewport.name}-${viewport.width}x${viewport.height}-sha-${shortSourceSha}-run-${gitMeta.run_id}.png`
   const fullPath = path.join(screenshotsDir, canonicalName)
   const taggedPath = path.join(screenshotsDir, taggedName)
 
@@ -48,9 +98,7 @@ async function captureAcceptanceScreenshot(
         tagged_file: taggedName,
         sha256: fileSha256,
         size_bytes: buf.length,
-        commit_sha: rawSha,
-        run_id: runId,
-        run_attempt: runAttempt,
+        ...gitMeta,
         captured_at: new Date().toISOString(),
         ...extraMetadata,
       },
@@ -83,7 +131,45 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       const hotline = page.getByText(/0393/).first()
       await expect(hotline).toBeVisible()
 
-      // 3. No horizontal overflow
+      // 3. Verify Live Catalog API data in Hero Quick Specs (SS-2: wait for real API, no skeleton, no error)
+      const hero = page.locator('section#home')
+      await expect(hero).toBeVisible()
+      await expect(hero.locator('.animate-pulse')).toHaveCount(0)
+      await expect(hero.getByText(/Không thể tải|Thử lại/i)).toHaveCount(0)
+      const heroItems = hero.locator('ul li')
+      await expect(heroItems.first()).toBeVisible()
+      const heroItemCount = await heroItems.count()
+      expect(heroItemCount).toBeGreaterThanOrEqual(1)
+
+      // 4. Verify Live Products Section loaded from real API (SS-2: real catalog data required)
+      const productsSection = page.locator('section#products')
+      await expect(productsSection).toBeVisible()
+      await expect(productsSection.locator('.animate-pulse')).toHaveCount(0)
+      await expect(productsSection.getByText(/Không thể tải danh mục sản phẩm/i)).toHaveCount(0)
+      await expect(productsSection.getByText(/Hiện không có sản phẩm nào/i)).toHaveCount(0)
+      await expect(productsSection.getByRole('button', { name: /Tất cả sản phẩm/i })).toBeVisible()
+      const productHeadings = productsSection.locator('h3')
+      await expect(productHeadings.first()).toBeVisible()
+      const productCount = await productHeadings.count()
+      expect(productCount).toBeGreaterThanOrEqual(1)
+
+      const sampleNames: string[] = []
+      for (let i = 0; i < Math.min(productCount, 3); i++) {
+        const text = (await productHeadings.nth(i).textContent())?.trim()
+        if (text) sampleNames.push(text)
+      }
+
+      // 5. Verify Advantages Section loaded from real API
+      const advSection = page.locator('section#advantages')
+      await expect(advSection).toBeVisible()
+      await expect(advSection.locator('.animate-pulse')).toHaveCount(0)
+
+      // 6. Verify Contact Section loaded from real API
+      const contactSection = page.locator('section#contact')
+      await expect(contactSection).toBeVisible()
+      await expect(contactSection.getByText(/0393/)).first().toBeVisible()
+
+      // 7. No horizontal overflow
       const overflow = await page.evaluate(() => {
         const doc = document.documentElement
         return {
@@ -93,8 +179,14 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       })
       expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
 
-      // 4. Capture acceptance screenshot on test PASS (for hosted CI acceptance)
-      await captureAcceptanceScreenshot(page, 'home', vp, { status: 'passed' })
+      // 8. Capture acceptance screenshot on verified live catalog PASS (SS-2: real API verified)
+      await captureAcceptanceScreenshot(page, 'home', vp, {
+        status: 'passed',
+        catalog_count: productCount,
+        hero_quick_specs_count: heroItemCount,
+        sample_products: sampleNames,
+        sections_verified: ['header', 'hero-quick-specs', 'about', 'products', 'advantages', 'contact'],
+      })
     })
   }
 
@@ -203,18 +295,8 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     const body = await response.json()
     expect(body.id).toBeTruthy()
 
-    // Expect success message
-    const successAlert = modal.locator('[role="alert"], [role="status"]').filter({ hasText: /thành công/i }).first()
-    await expect(successAlert).toBeVisible({ timeout: 15000 })
-
-    // Capture quote submission success screenshot
-    await captureAcceptanceScreenshot(page, 'quote-submission-success', desktopVp, {
-      status: 'passed',
-      quote_id: String(body.id),
-      marker,
-    })
-
-    // Shared CI artifact contract: separate UI proof directory (Codex C2: db-proof/ui)
+    // SS-1 (C2): Write UI db-proof IMMEDIATELY upon confirming response 201/id/marker,
+    // before any screenshot or further UI interactions, so persistence proof is NEVER orphaned.
     const uiProofDir = path.join(process.env.CI_ARTIFACT_DIR || 'ci-artifacts', 'db-proof', 'ui')
     fs.mkdirSync(uiProofDir, { recursive: true })
     fs.writeFileSync(path.join(uiProofDir, 'quote-id.txt'), String(body.id))
@@ -233,5 +315,16 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
         2
       )
     )
+
+    // Expect success message
+    const successAlert = modal.locator('[role="alert"], [role="status"]').filter({ hasText: /thành công/i }).first()
+    await expect(successAlert).toBeVisible({ timeout: 15000 })
+
+    // SS-1: Capture quote submission success screenshot while modal and success message are active
+    await captureAcceptanceScreenshot(page, 'quote-submission-success', desktopVp, {
+      status: 'passed',
+      quote_id: String(body.id),
+      marker,
+    })
   })
 })
