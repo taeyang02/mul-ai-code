@@ -137,21 +137,27 @@ const emit = defineEmits<{
               Hiện chưa có dữ liệu danh mục sản phẩm.
             </div>
 
-            <!-- Dynamic Products List -->
+            <!-- Dynamic Products List — wrap so name stays readable and long specs are not clipped by overflow-hidden -->
             <ul v-else class="space-y-3 text-xs sm:text-sm">
               <li
                 v-for="product in products"
                 :key="product.id"
-                class="flex items-center justify-between p-2.5 bg-slate-800/60 rounded border border-slate-700/60 gap-3"
+                class="flex flex-col gap-1.5 p-2.5 bg-slate-800/60 rounded border border-slate-700/60 min-w-0"
               >
-                <div class="truncate">
-                  <span class="font-bold text-slate-200 block truncate">{{ product.name }}</span>
-                  <span v-if="product.brand" class="text-[11px] text-slate-400 block truncate">{{ product.brand }}</span>
+                <div class="min-w-0">
+                  <span class="font-bold text-slate-200 block break-words whitespace-normal">{{ product.name }}</span>
+                  <span v-if="product.brand" class="text-[11px] text-slate-400 block break-words whitespace-normal">{{ product.brand }}</span>
                 </div>
-                <span v-if="product.specsSummary" class="font-mono text-[#FDE68A] text-xs shrink-0 text-right">
+                <span
+                  v-if="product.specsSummary"
+                  class="font-mono text-[#FDE68A] text-xs break-words whitespace-normal"
+                >
                   {{ product.specsSummary }}
                 </span>
-                <span v-else-if="product.category?.name" class="font-mono text-slate-300 text-xs shrink-0 text-right">
+                <span
+                  v-else-if="product.category?.name"
+                  class="font-mono text-slate-300 text-xs break-words whitespace-normal"
+                >
                   {{ product.category.name }}
                 </span>
               </li>
