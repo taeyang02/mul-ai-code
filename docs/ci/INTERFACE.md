@@ -57,17 +57,24 @@ manifest.json
 
 ## DB proof hand-off → `scripts/ci/db-proof.sh`
 
-Evidence files (required for quote half of the gate):
+Separate provenance trees (C2 — API must not overwrite UI):
 
-| File | Content |
-|---|---|
-| `$CI_ARTIFACT_DIR/db-proof/quote-id.txt` | UUID from `201` response body `id` |
-| `$CI_ARTIFACT_DIR/db-proof/quote-marker.txt` | Marker substring embedded in the quote `message` |
+| Path | Writer | Content |
+|---|---|---|
+| `$CI_ARTIFACT_DIR/db-proof/api/quote-id.txt` | `scripts/ci/seed-quote-proof.sh` | UUID from API `201` |
+| `$CI_ARTIFACT_DIR/db-proof/api/quote-marker.txt` | seed | Marker in API POST message |
+| `$CI_ARTIFACT_DIR/db-proof/api/provenance.txt` | seed | `provenance=api-seed` + metadata |
+| `$CI_ARTIFACT_DIR/db-proof/ui/quote-id.txt` | Playwright `fullstack-e2e.spec.ts` | UUID from UI-submitted quote |
+| `$CI_ARTIFACT_DIR/db-proof/ui/quote-marker.txt` | Playwright | Marker from UI form message |
+| `$CI_ARTIFACT_DIR/db-proof/ui/provenance.txt` | Playwright | `provenance=ui-playwright` |
 
-**Writers (both produce real API/DB rows — never fabricate PASS):**
+`db-proof.sh` records `migration_status`, `api_quote_status`, and `ui_quote_status` in `result.txt`.
 
-1. `scripts/ci/seed-quote-proof.sh` — CI step after e2e (runs `if: always()`): `POST /api/v1/quote-requests` against the live backend; independent of Playwright.
-2. Playwright `frontend/e2e/fullstack-e2e.spec.ts` — also writes the same files when the UI quote flow returns `201` (FE ownership; does not replace the API seed).
+- **API quote** is always required for db-proof PASS.
+- **UI quote** is required when `job-status/e2e.txt` has `conclusion=success` or when `ui/` files exist; each source is queried by its own id+marker. Missing UI while e2e failed → `ui_quote_status=MISSING` (honest; API does not fill the gap).
+- Migration success requires structured Flyway `success=true` rows — never table-name grepping.
 
-`db-proof.sh` records `migration_status` and `quote_status` separately in `result.txt`. **Overall `status=PASS` (exit 0) only when both are PASS.** Migration success requires a successful structured flyway query with enough `success=true` rows — never by grepping the table name. Missing DB, missing quote files, empty/failed history, or no matching quote row ⇒ overall `FAIL` (exit 1) and blocks the CI gate. Logic self-test: `scripts/ci/db-proof-selftest.sh` (psql stub; not a real CI run).
+**E2E job gate (C1):** `npm run test:ci` is required. If it fails, `job-status/e2e.txt` must stay `conclusion=failure` and the step must exit nonzero — legacy `test:keyboard` / `test:e2e` are diagnostic only and must not promote the job to success.
+
+Self-tests: `scripts/ci/db-proof-selftest.sh`, `scripts/ci/e2e-gate-selftest.sh` (stubs; not GitHub CI).
 

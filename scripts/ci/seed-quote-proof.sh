@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Seed real quote id/marker for scripts/ci/db-proof.sh via backend API.
-# Proves a live POST→DB row independently of Playwright success/failure.
-# Does not invent PASS — writes evidence files only; db-proof.sh still queries Postgres.
+# Seed API-provenance quote evidence under db-proof/api/ (never overwrites db-proof/ui/).
+# Proves live POST→DB independently of Playwright. db-proof.sh still queries Postgres.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-OUT="${CI_ARTIFACT_DIR:-$ROOT/ci-artifacts}/db-proof"
+OUT="${CI_ARTIFACT_DIR:-$ROOT/ci-artifacts}/db-proof/api"
 API_BASE="${API_BASE:-http://127.0.0.1:8080/api/v1}"
 mkdir -p "$OUT"
 
@@ -53,10 +52,12 @@ QID=$(node -e 'const j=JSON.parse(require("fs").readFileSync(process.argv[1],"ut
 printf '%s' "$QID" >"$OUT/quote-id.txt"
 printf '%s' "$MARKER" >"$OUT/quote-marker.txt"
 {
+  echo "provenance=api-seed"
+  echo "source=POST ${API_BASE%/}/quote-requests"
   echo "status=seeded"
   echo "http_code=$HTTP_CODE"
   echo "quote_id=$QID"
   echo "marker=$MARKER"
   echo "api_base=$API_BASE"
   echo "timestamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-} | tee "$OUT/seed-quote-proof.txt"
+} | tee "$OUT/provenance.txt" | tee "$OUT/seed-quote-proof.txt"

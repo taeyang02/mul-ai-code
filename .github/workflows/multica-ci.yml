@@ -195,26 +195,25 @@ jobs:
           SHOT_DIR: ${{ github.workspace }}/ci-artifacts/e2e
         run: |
           set +e
-          mkdir -p "$CI_ARTIFACT_DIR/job-status" "$SHOT_DIR" "$CI_ARTIFACT_DIR/db-proof"
+          mkdir -p "$CI_ARTIFACT_DIR/job-status" "$SHOT_DIR" "$CI_ARTIFACT_DIR/db-proof/ui" "$CI_ARTIFACT_DIR/db-proof/api"
           NOTES=""
-          # Preferred path (Antigravity): Playwright test:ci with workers=1
-          if npm run test:ci; then
+          # Required suite: Playwright test:ci. Failure must remain failure in
+          # exit code + job-status (and thus manifest) — legacy scripts are
+          # diagnostic only and must never clear a test:ci failure (C1).
+          npm run test:ci
+          TEST_CI_RC=$?
+          if [[ "$TEST_CI_RC" -eq 0 ]]; then
             echo "status=completed" >"$CI_ARTIFACT_DIR/job-status/e2e.txt"
             echo "conclusion=success" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
             echo "note=test:ci" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
             exit 0
           fi
-          NOTES="test:ci_unavailable_or_failed"
-          # Compatibility until test:ci lands — still real browser suites, not mocks
-          KB=0; E2E=0
+          NOTES="test:ci_failed_rc=${TEST_CI_RC}"
+          # Diagnostic legacy suites — record outcomes; do not promote to success
+          KB=0; LEGACY_E2E=0
           npm run test:keyboard && KB=1 || NOTES="$NOTES;test:keyboard_failed"
-          npm run test:e2e && E2E=1 || NOTES="$NOTES;test:e2e_failed"
-          if [[ "$KB" -eq 1 && "$E2E" -eq 1 ]]; then
-            echo "status=completed" >"$CI_ARTIFACT_DIR/job-status/e2e.txt"
-            echo "conclusion=success" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
-            echo "note=legacy keyboard+e2e; test:ci pending Antigravity" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
-            exit 0
-          fi
+          npm run test:e2e && LEGACY_E2E=1 || NOTES="$NOTES;test:e2e_failed"
+          NOTES="$NOTES;legacy_kb=${KB};legacy_e2e=${LEGACY_E2E}"
           echo "status=completed" >"$CI_ARTIFACT_DIR/job-status/e2e.txt"
           echo "conclusion=failure" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
           echo "note=${NOTES}" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
@@ -229,9 +228,8 @@ jobs:
           API_BASE: http://127.0.0.1:8080/api/v1
         run: |
           set -euo pipefail
-          mkdir -p "$CI_ARTIFACT_DIR/db-proof"
-          # Independent of Playwright: POST creates a real quote_requests row + id/marker files.
-          # db-proof.sh still verifies Flyway + parameterized lookup (never invents PASS).
+          mkdir -p "$CI_ARTIFACT_DIR/db-proof/api"
+          # Writes db-proof/api/ only — never overwrites db-proof/ui/ (C2).
           chmod +x ./scripts/ci/seed-quote-proof.sh
           ./scripts/ci/seed-quote-proof.sh
       - name: DB proof (migrations + quote id/marker)
@@ -245,8 +243,8 @@ jobs:
           PGDATABASE: thanhan
         run: |
           set -euo pipefail
-          mkdir -p "$CI_ARTIFACT_DIR/db-proof"
-          # Real evidence via scripts/ci/db-proof.sh — never hardcode SKIPPED/PASS.
+          mkdir -p "$CI_ARTIFACT_DIR/db-proof/api" "$CI_ARTIFACT_DIR/db-proof/ui"
+          # Verifies api/ + ui/ separately; never invents PASS.
           ./scripts/ci/db-proof.sh
       - name: Upload e2e artifacts
         if: always()

@@ -21,8 +21,6 @@ write_psql_stub() {
 #!/usr/bin/env bash
 set -euo pipefail
 MODE="$mode"
-ARGS="\$*"
-# Collect -c SQL
 SQL=""
 prev=""
 for a in "\$@"; do
@@ -31,14 +29,8 @@ for a in "\$@"; do
 done
 
 case "\$SQL" in
-  "SELECT 1")
-    echo "1"
-    exit 0
-    ;;
-  *"version()"*)
-    echo "PostgreSQL stub"
-    exit 0
-    ;;
+  "SELECT 1") echo "1"; exit 0 ;;
+  *"version()"*) echo "PostgreSQL stub"; exit 0 ;;
 esac
 
 case "\$SQL" in
@@ -48,22 +40,15 @@ case "\$SQL" in
         echo "ERROR: relation flyway_schema_history does not exist" >&2
         exit 1
         ;;
-      empty_history)
-        exit 0
-        ;;
-      failed_migration)
+      empty_history) exit 0 ;;
+      failed_migration|mig_fail_quote_ok)
         echo "1|1|schema|t"
         echo "2|2|seed|f"
         exit 0
         ;;
-      ok_migrations|ok_all|quote_miss)
+      ok_migrations|ok_all|quote_miss|ok_api_only|ok_api_ui|ui_miss_row)
         echo "1|1|schema|t"
         echo "2|2|seed verified content|t"
-        exit 0
-        ;;
-      mig_fail_quote_ok)
-        echo "1|1|schema|t"
-        echo "2|2|seed|f"
         exit 0
         ;;
     esac
@@ -72,16 +57,24 @@ esac
 
 case "\$SQL" in
   *"quote_requests"*)
+    QID=""
+    for a in "\$@"; do
+      case "\$a" in
+        qid=*) QID="\${a#qid=}" ;;
+      esac
+    done
     case "\$MODE" in
-      ok_all|mig_fail_quote_ok)
-        QID=""
-        for a in "\$@"; do
-          case "\$a" in
-            qid=*) QID="\${a#qid=}" ;;
-          esac
-        done
+      ok_all|mig_fail_quote_ok|ok_api_only|ok_api_ui)
         if [[ -z "\$QID" ]]; then QID="11111111-1111-1111-1111-111111111111"; fi
-        echo "\$QID|CI E2E synthetic verification marker [MARKER_1]"
+        echo "\$QID|marker matched"
+        exit 0
+        ;;
+      ui_miss_row)
+        # API id hits; UI id does not
+        if [[ "\$QID" == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" ]]; then
+          echo "\$QID|api marker"
+          exit 0
+        fi
         exit 0
         ;;
       quote_miss|ok_migrations)
@@ -105,15 +98,30 @@ run_case() {
   local mode="$2"
   local expect_status="$3"
   local expect_exit="$4"
-  local with_quote="$5"
+  local api_quote="$5"
+  local ui_quote="$6"
+  local e2e_conclusion="$7"
 
   write_psql_stub "$mode"
   local art="$BASE/case-$name"
   rm -rf "$art"
-  mkdir -p "$art/db-proof"
-  if [[ "$with_quote" == "yes" ]]; then
-    echo "11111111-1111-1111-1111-111111111111" >"$art/db-proof/quote-id.txt"
-    echo "MARKER_1" >"$art/db-proof/quote-marker.txt"
+  mkdir -p "$art/db-proof/api" "$art/db-proof/ui" "$art/job-status"
+  if [[ -n "$e2e_conclusion" ]]; then
+    {
+      echo "status=completed"
+      echo "conclusion=$e2e_conclusion"
+      echo "note=selftest"
+    } >"$art/job-status/e2e.txt"
+  fi
+  if [[ "$api_quote" == "yes" ]]; then
+    echo "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" >"$art/db-proof/api/quote-id.txt"
+    echo "MARKER_API" >"$art/db-proof/api/quote-marker.txt"
+    echo "provenance=api-seed" >"$art/db-proof/api/provenance.txt"
+  fi
+  if [[ "$ui_quote" == "yes" ]]; then
+    echo "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" >"$art/db-proof/ui/quote-id.txt"
+    echo "MARKER_UI" >"$art/db-proof/ui/quote-marker.txt"
+    echo "provenance=ui-playwright" >"$art/db-proof/ui/provenance.txt"
   fi
 
   set +e
@@ -123,10 +131,7 @@ run_case() {
   set -e
 
   got="$(grep '^status=' "$art/db-proof/result.txt" | head -1 | cut -d= -f2- || true)"
-  mig="$(grep '^migration_status=' "$art/db-proof/result.txt" | head -1 | cut -d= -f2- || true)"
-  quo="$(grep '^quote_status=' "$art/db-proof/result.txt" | head -1 | cut -d= -f2- || true)"
-
-  echo "CASE $name: status=$got migration=$mig quote=$quo exit=$rc (expect status=$expect_status exit=$expect_exit)" | tee -a "$LOG"
+  echo "CASE $name: status=$got exit=$rc (expect status=$expect_status exit=$expect_exit)" | tee -a "$LOG"
   cat "$art/db-proof/result.txt" >>"$LOG"
   echo "---" >>"$LOG"
 
@@ -142,23 +147,27 @@ run_case() {
   echo "script=$SCRIPT"
 } | tee "$LOG"
 
-# Negative checks from Codex report
-run_case "missing_table_query_fail" "missing_table" "FAIL" 1 "no"
-run_case "empty_history" "empty_history" "FAIL" 1 "yes"
-run_case "failed_migration_row" "failed_migration" "FAIL" 1 "yes"
-run_case "missing_quote_files" "ok_migrations" "FAIL" 1 "no"
-run_case "quote_lookup_no_row" "quote_miss" "FAIL" 1 "yes"
-run_case "migration_fail_quote_match" "mig_fail_quote_ok" "FAIL" 1 "yes"
-
-# Success control — both migration + quote structured OK
-run_case "success_control" "ok_all" "PASS" 0 "yes"
+run_case "missing_table_query_fail" "missing_table" "FAIL" 1 "no" "no" "failure"
+run_case "empty_history" "empty_history" "FAIL" 1 "yes" "no" "failure"
+run_case "failed_migration_row" "failed_migration" "FAIL" 1 "yes" "no" "failure"
+run_case "missing_api_quote_files" "ok_migrations" "FAIL" 1 "no" "no" "failure"
+run_case "api_quote_lookup_no_row" "quote_miss" "FAIL" 1 "yes" "no" "failure"
+run_case "migration_fail_api_match" "mig_fail_quote_ok" "FAIL" 1 "yes" "no" "failure"
+# e2e failed, only API present → PASS (UI MISSING honest)
+run_case "api_only_e2e_failed" "ok_api_only" "PASS" 0 "yes" "no" "failure"
+# e2e success requires UI files
+run_case "e2e_success_missing_ui" "ok_api_only" "FAIL" 1 "yes" "no" "success"
+# both API+UI present and matching
+run_case "api_and_ui_ok" "ok_api_ui" "PASS" 0 "yes" "yes" "success"
+# UI files present but row miss → FAIL
+run_case "ui_row_miss" "ui_miss_row" "FAIL" 1 "yes" "yes" "success"
 
 echo "summary pass=$PASS_N fail=$FAIL_N" | tee -a "$LOG"
-cp "$LOG" "$ROOT/scripts/ci/db-proof-selftest.log" 2>/dev/null || cp "$LOG" /tmp/db-proof-selftest.log
+cp "$LOG" "$ROOT/scripts/ci/db-proof-selftest.log" 2>/dev/null || true
 
 if [[ "$FAIL_N" -ne 0 ]]; then
   echo "SELFTEST FAILED" >&2
   exit 1
 fi
 echo "SELFTEST OK"
-echo "LOG=$LOG"
+exit 0
