@@ -219,19 +219,23 @@ jobs:
           echo "conclusion=failure" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
           echo "note=${NOTES}" >>"$CI_ARTIFACT_DIR/job-status/e2e.txt"
           exit 1
-      - name: DB proof
+      - name: Install psql client
+        if: always()
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: DB proof (migrations + quote id/marker)
         if: always()
         env:
           CI_ARTIFACT_DIR: ${{ github.workspace }}/ci-artifacts
+          PGHOST: 127.0.0.1
+          PGPORT: '5432'
+          PGUSER: thanhan
+          PGPASSWORD: thanhan
+          PGDATABASE: thanhan
         run: |
-          # Service container — use psql via docker if available, else JDBC note
+          set -euo pipefail
           mkdir -p "$CI_ARTIFACT_DIR/db-proof"
-          if command -v psql >/dev/null; then
-            PGPASSWORD=thanhan psql -h 127.0.0.1 -U thanhan -d thanhan -c 'SELECT 1' \
-              >"$CI_ARTIFACT_DIR/db-proof/ping.txt" 2>&1 || true
-          fi
-          echo "status=SKIPPED" >"$CI_ARTIFACT_DIR/db-proof/result.txt"
-          echo "note=full db-proof.sh targets compose; service-container proof is ping-only here" >>"$CI_ARTIFACT_DIR/db-proof/result.txt"
+          # Real evidence via scripts/ci/db-proof.sh — never hardcode SKIPPED/PASS.
+          ./scripts/ci/db-proof.sh
       - name: Upload e2e artifacts
         if: always()
         uses: actions/upload-artifact@v4

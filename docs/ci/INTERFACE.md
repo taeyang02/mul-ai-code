@@ -54,3 +54,14 @@ manifest.json
 ```
 
 `manifest.json` requires `schema_version=1` plus `repository`, `branch`, `commit_sha`, `run_id`, `run_attempt`, `timestamp`, `jobs`, and a file inventory with checksums when packaged.
+
+## DB proof hand-off (e2e → `scripts/ci/db-proof.sh`)
+
+After a synthetic quote POST succeeds, Playwright writes:
+
+| File | Content |
+|---|---|
+| `$CI_ARTIFACT_DIR/db-proof/quote-id.txt` | UUID from `201` response body `id` |
+| `$CI_ARTIFACT_DIR/db-proof/quote-marker.txt` | Marker substring embedded in the quote `message` |
+
+`db-proof.sh` then records `postgres-version.txt`, `flyway-schema-history.txt`, and parameterized `quote-lookup.txt`. Missing quote files ⇒ migration evidence may still `PASS` with quote lookup honestly `SKIPPED` — never a forged whole-suite PASS.

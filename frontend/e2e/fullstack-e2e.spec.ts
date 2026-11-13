@@ -109,22 +109,42 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
 
     // Fill synthetic form data
     const timestamp = Date.now()
+    const marker = `MARKER_${timestamp}`
     const syntheticName = `CI Test User ${timestamp}`
     const syntheticPhone = '0987654321'
     const syntheticEmail = `citest_${timestamp}@example.com`
-    const syntheticMessage = `CI E2E synthetic verification marker [MARKER_${timestamp}]`
+    const syntheticMessage = `CI E2E synthetic verification marker [${marker}]`
 
     await page.fill('#quote-fullname', syntheticName)
     await page.fill('#quote-phone', syntheticPhone)
     await page.fill('#quote-email', syntheticEmail)
     await page.fill('#quote-message', syntheticMessage)
 
+    // Capture created quote id for db-proof (docs/ci/INTERFACE.md)
+    const responsePromise = page.waitForResponse(
+      (r) => r.url().includes('/api/v1/quote-requests') && r.request().method() === 'POST',
+      { timeout: 15000 }
+    )
+
     // Submit form
     const submitBtn = modal.getByRole('button', { name: /Gửi yêu cầu báo giá/i })
     await submitBtn.click()
 
+    const response = await responsePromise
+    expect(response.status()).toBe(201)
+    const body = await response.json()
+    expect(body.id).toBeTruthy()
+
     // Expect success message
     const successAlert = modal.locator('[role="alert"]').filter({ hasText: /thành công/i }).first()
     await expect(successAlert).toBeVisible({ timeout: 15000 })
+
+    // Shared CI artifact contract for scripts/ci/db-proof.sh
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const proofDir = path.join(process.env.CI_ARTIFACT_DIR || 'ci-artifacts', 'db-proof')
+    fs.mkdirSync(proofDir, { recursive: true })
+    fs.writeFileSync(path.join(proofDir, 'quote-id.txt'), String(body.id))
+    fs.writeFileSync(path.join(proofDir, 'quote-marker.txt'), marker)
   })
 })
