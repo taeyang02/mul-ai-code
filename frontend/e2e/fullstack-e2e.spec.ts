@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
-import fs from 'node:fs'
-import path from 'node:path'
-import crypto from 'node:crypto'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import * as crypto from 'node:crypto'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 
@@ -17,47 +17,71 @@ interface ViewportConfig {
 interface GitMetadata {
   checkout_sha: string
   source_head_sha: string
-  is_merge_commit: boolean
+  event_name: string
+  is_pr_event: boolean
+  pr_number: number | null
   run_id: string
   run_attempt: string
 }
 
+/**
+ * Resolves repository metadata distinguishing runner checkout SHA from PR source HEAD SHA.
+ * SS-4: Does not assume git history or multi-parent merge commit (actions/checkout is depth:1 by default).
+ * Reads authoritative PR head SHA directly from GITHUB_EVENT_PATH when available.
+ */
 function resolveGitMetadata(): GitMetadata {
+  const eventName = process.env.GITHUB_EVENT_NAME || 'local'
   let checkoutSha = process.env.GITHUB_SHA || 'unknown'
+
+  // Attempt local git rev-parse if GITHUB_SHA is unset
+  if (checkoutSha === 'unknown' || !checkoutSha) {
+    try {
+      const cwd = path.resolve(__dirname, '..')
+      const head = execSync('git rev-parse HEAD', { cwd, encoding: 'utf8' }).trim()
+      if (head) checkoutSha = head
+    } catch {
+      // fallback
+    }
+  }
+
   let sourceHeadSha = checkoutSha
-  let isMergeCommit = false
-  const runId = process.env.GITHUB_RUN_ID || 'local'
-  const runAttempt = process.env.GITHUB_RUN_ATTEMPT || '1'
+  let isPrEvent = false
+  let prNumber: number | null = null
 
-  try {
-    const cwd = path.resolve(__dirname, '..')
-    const head = execSync('git rev-parse HEAD', { cwd, encoding: 'utf8' }).trim()
-    if (head) checkoutSha = head
+  // 1. Authoritative GitHub Actions pull_request event payload (works on shallow checkout)
+  const eventPath = process.env.GITHUB_EVENT_PATH
+  if (eventPath && fs.existsSync(eventPath)) {
+    try {
+      const rawEvent = fs.readFileSync(eventPath, 'utf8')
+      const eventData = JSON.parse(rawEvent)
+      if (eventData && eventData.pull_request) {
+        isPrEvent = true
+        prNumber = eventData.pull_request.number || null
+        if (eventData.pull_request.head && eventData.pull_request.head.sha) {
+          sourceHeadSha = String(eventData.pull_request.head.sha)
+        }
+      }
+    } catch {
+      // ignore JSON parse error
+    }
+  }
 
-    const parentsRaw = execSync('git rev-parse HEAD^@', { cwd, encoding: 'utf8' }).trim()
-    const parents = parentsRaw ? parentsRaw.split(/\s+/) : []
-    if (parents.length >= 2) {
-      isMergeCommit = true
-      // In GitHub Actions PR merge commit (refs/pull/X/merge):
-      // Parent 0 = target branch (e.g. main)
-      // Parent 1 = PR source branch HEAD
-      sourceHeadSha = parents[1]
-    } else {
-      sourceHeadSha = checkoutSha
-    }
-  } catch {
-    if (process.env.PR_HEAD_SHA) {
-      sourceHeadSha = process.env.PR_HEAD_SHA
-      isMergeCommit = sourceHeadSha !== checkoutSha
-    }
+  // 2. Explicit workflow environment override (if provided)
+  if (process.env.PR_HEAD_SHA) {
+    sourceHeadSha = process.env.PR_HEAD_SHA
+    isPrEvent = true
+  } else if (process.env.GITHUB_HEAD_SHA) {
+    sourceHeadSha = process.env.GITHUB_HEAD_SHA
   }
 
   return {
     checkout_sha: checkoutSha,
     source_head_sha: sourceHeadSha,
-    is_merge_commit: isMergeCommit,
-    run_id: runId,
-    run_attempt: runAttempt,
+    event_name: eventName,
+    is_pr_event: isPrEvent,
+    pr_number: prNumber,
+    run_id: process.env.GITHUB_RUN_ID || 'local',
+    run_attempt: process.env.GITHUB_RUN_ATTEMPT || '1',
   }
 }
 
@@ -123,15 +147,16 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       await page.goto('/', { waitUntil: 'networkidle' })
       await page.waitForSelector('#app')
 
-      // 1. Brand name visible
+      const verifiedSections: string[] = []
+
+      // 1. Header Navigation & Brand (SS-2)
       const brand = page.getByText(/Thanh An/i).first()
       await expect(brand).toBeVisible()
+      const headerHotline = page.locator('header').getByText(/0393/).first()
+      await expect(headerHotline).toBeVisible()
+      verifiedSections.push('header')
 
-      // 2. Hotline visible on first paint outside drawer
-      const hotline = page.getByText(/0393/).first()
-      await expect(hotline).toBeVisible()
-
-      // 3. Verify Live Catalog API data in Hero Quick Specs (SS-2: wait for real API, no skeleton, no error)
+      // 2. Hero Quick Specs from Live API (SS-2: wait for real catalog data, no skeleton, no error)
       const hero = page.locator('section#home')
       await expect(hero).toBeVisible()
       await expect(hero.locator('.animate-pulse')).toHaveCount(0)
@@ -140,12 +165,24 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       await expect(heroItems.first()).toBeVisible()
       const heroItemCount = await heroItems.count()
       expect(heroItemCount).toBeGreaterThanOrEqual(1)
+      verifiedSections.push('hero-quick-specs')
 
-      // 4. Verify Live Products Section loaded from real API (SS-2: real catalog data required)
+      // 3. About Section from Live Company API (SS-2: actual content assert, no skeleton, no error)
+      const aboutSection = page.locator('section#about')
+      await expect(aboutSection).toBeVisible()
+      await expect(aboutSection.locator('.animate-pulse')).toHaveCount(0)
+      await expect(aboutSection.getByText(/Lỗi tải thông tin doanh nghiệp|Thử tải lại/i)).toHaveCount(0)
+      const companyHeading = aboutSection.locator('h2')
+      await expect(companyHeading).toBeVisible()
+      await expect(companyHeading).toContainText(/CÔNG TY TNHH THANH AN BẮC GIANG|Thanh An Bắc Giang/i)
+      await expect(aboutSection.getByText(/Sứ mệnh/i)).toBeVisible()
+      verifiedSections.push('about')
+
+      // 4. Products Section from Live Catalog API (SS-2: real product data required, no empty state, no error)
       const productsSection = page.locator('section#products')
       await expect(productsSection).toBeVisible()
       await expect(productsSection.locator('.animate-pulse')).toHaveCount(0)
-      await expect(productsSection.getByText(/Không thể tải danh mục sản phẩm/i)).toHaveCount(0)
+      await expect(productsSection.getByText(/Không thể tải danh mục sản phẩm|Lỗi tải danh mục/i)).toHaveCount(0)
       await expect(productsSection.getByText(/Hiện không có sản phẩm nào/i)).toHaveCount(0)
       await expect(productsSection.getByRole('button', { name: /Tất cả sản phẩm/i })).toBeVisible()
       const productHeadings = productsSection.locator('h3')
@@ -158,16 +195,28 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
         const text = (await productHeadings.nth(i).textContent())?.trim()
         if (text) sampleNames.push(text)
       }
+      expect(sampleNames.length).toBeGreaterThanOrEqual(1)
+      verifiedSections.push('products')
 
-      // 5. Verify Advantages Section loaded from real API
+      // 5. Advantages Section from Live Advantages API (SS-2: cards verified, no skeleton, no error)
       const advSection = page.locator('section#advantages')
       await expect(advSection).toBeVisible()
       await expect(advSection.locator('.animate-pulse')).toHaveCount(0)
+      await expect(advSection.getByText(/Lỗi tải lợi thế cạnh tranh|Thử tải lại/i)).toHaveCount(0)
+      const advHeadings = advSection.locator('h3')
+      await expect(advHeadings.first()).toBeVisible()
+      const advCount = await advHeadings.count()
+      expect(advCount).toBeGreaterThanOrEqual(1)
+      await expect(advSection.getByText(/Uy tín hàng đầu|Giá cạnh tranh|Giao hàng nhanh|Nguồn hàng ổn định/i).first()).toBeVisible()
+      verifiedSections.push('advantages')
 
-      // 6. Verify Contact Section loaded from real API
+      // 6. Contact Section from Live Contact API (SS-3: .first() correctly on Locator, SS-2: real verified content)
       const contactSection = page.locator('section#contact')
       await expect(contactSection).toBeVisible()
-      await expect(contactSection.getByText(/0393/)).first().toBeVisible()
+      await expect(contactSection.getByText(/Lỗi tải thông tin liên hệ|Thử tải lại/i)).toHaveCount(0)
+      await expect(contactSection.getByText(/0393/).first()).toBeVisible()
+      await expect(contactSection.getByText(/thanhan\.bg@vatlieuxd\.com/i).first()).toBeVisible()
+      verifiedSections.push('contact')
 
       // 7. No horizontal overflow
       const overflow = await page.evaluate(() => {
@@ -179,13 +228,13 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       })
       expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
 
-      // 8. Capture acceptance screenshot on verified live catalog PASS (SS-2: real API verified)
+      // 8. Capture acceptance screenshot on verified live catalog PASS
       await captureAcceptanceScreenshot(page, 'home', vp, {
         status: 'passed',
         catalog_count: productCount,
         hero_quick_specs_count: heroItemCount,
         sample_products: sampleNames,
-        sections_verified: ['header', 'hero-quick-specs', 'about', 'products', 'advantages', 'contact'],
+        sections_verified: verifiedSections,
       })
     })
   }
@@ -220,7 +269,10 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     }
 
     // Capture drawer open acceptance screenshot
-    await captureAcceptanceScreenshot(page, 'mobile-drawer-open', mobileVp, { status: 'passed' })
+    await captureAcceptanceScreenshot(page, 'mobile-drawer-open', mobileVp, {
+      status: 'passed',
+      sections_verified: ['mobile-drawer'],
+    })
 
     // Close button works
     const closeBtn = drawer.locator('button[aria-label="Đóng menu"]').first()
@@ -325,6 +377,7 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       status: 'passed',
       quote_id: String(body.id),
       marker,
+      sections_verified: ['quote-modal'],
     })
   })
 })
