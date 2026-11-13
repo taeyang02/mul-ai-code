@@ -139,23 +139,26 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     const successAlert = modal.locator('[role="alert"], [role="status"]').filter({ hasText: /thành công/i }).first()
     await expect(successAlert).toBeVisible({ timeout: 15000 })
 
-    // UI provenance under db-proof/ui/ (never share files with API seed — C2)
+    // Shared CI artifact contract: separate UI proof directory (Codex C2: db-proof/ui)
     const fs = await import('node:fs')
     const path = await import('node:path')
-    const proofDir = path.join(process.env.CI_ARTIFACT_DIR || 'ci-artifacts', 'db-proof', 'ui')
-    fs.mkdirSync(proofDir, { recursive: true })
-    fs.writeFileSync(path.join(proofDir, 'quote-id.txt'), String(body.id))
-    fs.writeFileSync(path.join(proofDir, 'quote-marker.txt'), marker)
+    const uiProofDir = path.join(process.env.CI_ARTIFACT_DIR || 'ci-artifacts', 'db-proof', 'ui')
+    fs.mkdirSync(uiProofDir, { recursive: true })
+    fs.writeFileSync(path.join(uiProofDir, 'quote-id.txt'), String(body.id))
+    fs.writeFileSync(path.join(uiProofDir, 'quote-marker.txt'), marker)
     fs.writeFileSync(
-      path.join(proofDir, 'provenance.txt'),
-      [
-        'provenance=ui-playwright',
-        'source=frontend/e2e/fullstack-e2e.spec.ts',
-        `quote_id=${body.id}`,
-        `marker=${marker}`,
-        `timestamp=${new Date().toISOString()}`,
-        '',
-      ].join('\n')
+      path.join(uiProofDir, 'provenance.json'),
+      JSON.stringify(
+        {
+          source: 'ui_playwright_e2e',
+          id: String(body.id),
+          marker,
+          status: 201,
+          createdAt: new Date().toISOString(),
+        },
+        null,
+        2
+      )
     )
   })
 })
