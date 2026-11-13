@@ -1,7 +1,67 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+import fs from 'node:fs'
+import path from 'node:path'
+import crypto from 'node:crypto'
+
+interface ViewportConfig {
+  name: string
+  width: number
+  height: number
+}
+
+async function captureAcceptanceScreenshot(
+  page: Page,
+  label: string,
+  viewport: ViewportConfig,
+  extraMetadata: Record<string, unknown> = {}
+) {
+  const shotDir = process.env.SHOT_DIR || path.join(process.env.CI_ARTIFACT_DIR || 'ci-artifacts', 'e2e')
+  const screenshotsDir = path.join(shotDir, 'screenshots')
+  fs.mkdirSync(screenshotsDir, { recursive: true })
+
+  const runId = process.env.GITHUB_RUN_ID || 'local'
+  const runAttempt = process.env.GITHUB_RUN_ATTEMPT || '1'
+  const rawSha = process.env.GITHUB_SHA || 'local'
+  const shortSha = rawSha.slice(0, 7)
+
+  const canonicalName = `${label}-${viewport.name}-${viewport.width}x${viewport.height}.png`
+  const taggedName = `${label}-${viewport.name}-${viewport.width}x${viewport.height}-sha-${shortSha}-run-${runId}.png`
+  const fullPath = path.join(screenshotsDir, canonicalName)
+  const taggedPath = path.join(screenshotsDir, taggedName)
+
+  await page.screenshot({ path: fullPath, fullPage: true })
+  fs.copyFileSync(fullPath, taggedPath)
+
+  const buf = fs.readFileSync(fullPath)
+  const fileSha256 = crypto.createHash('sha256').update(buf).digest('hex')
+
+  const metaFile = path.join(screenshotsDir, `${label}-${viewport.name}-${viewport.width}x${viewport.height}-meta.json`)
+  fs.writeFileSync(
+    metaFile,
+    JSON.stringify(
+      {
+        label,
+        viewport: viewport.name,
+        width: viewport.width,
+        height: viewport.height,
+        canonical_file: canonicalName,
+        tagged_file: taggedName,
+        sha256: fileSha256,
+        size_bytes: buf.length,
+        commit_sha: rawSha,
+        run_id: runId,
+        run_attempt: runAttempt,
+        captured_at: new Date().toISOString(),
+        ...extraMetadata,
+      },
+      null,
+      2
+    )
+  )
+}
 
 test.describe('Thanh An Fullstack E2E Suite', () => {
-  const viewports = [
+  const viewports: ViewportConfig[] = [
     { name: 'desktop', width: 1440, height: 900 },
     { name: 'tablet', width: 768, height: 1024 },
     { name: 'mobile', width: 390, height: 844 },
@@ -32,11 +92,15 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
         }
       })
       expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
+
+      // 4. Capture acceptance screenshot on test PASS (for hosted CI acceptance)
+      await captureAcceptanceScreenshot(page, 'home', vp, { status: 'passed' })
     })
   }
 
   test('Mobile Drawer (390x844): layout, navigation links, and backdrop', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 })
+    const mobileVp: ViewportConfig = { name: 'mobile', width: 390, height: 844 }
+    await page.setViewportSize({ width: mobileVp.width, height: mobileVp.height })
     await page.goto('/', { waitUntil: 'networkidle' })
     await page.waitForSelector('#app')
 
@@ -62,6 +126,9 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       const link = drawer.getByRole('link', { name: item }).first()
       await expect(link).toBeVisible()
     }
+
+    // Capture drawer open acceptance screenshot
+    await captureAcceptanceScreenshot(page, 'mobile-drawer-open', mobileVp, { status: 'passed' })
 
     // Close button works
     const closeBtn = drawer.locator('button[aria-label="Đóng menu"]').first()
@@ -97,7 +164,8 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
   })
 
   test('Synthetic Quote Request Submission', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 })
+    const desktopVp: ViewportConfig = { name: 'desktop', width: 1280, height: 800 }
+    await page.setViewportSize({ width: desktopVp.width, height: desktopVp.height })
     await page.goto('/', { waitUntil: 'networkidle' })
     await page.waitForSelector('#app')
 
@@ -139,9 +207,14 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     const successAlert = modal.locator('[role="alert"], [role="status"]').filter({ hasText: /thành công/i }).first()
     await expect(successAlert).toBeVisible({ timeout: 15000 })
 
+    // Capture quote submission success screenshot
+    await captureAcceptanceScreenshot(page, 'quote-submission-success', desktopVp, {
+      status: 'passed',
+      quote_id: String(body.id),
+      marker,
+    })
+
     // Shared CI artifact contract: separate UI proof directory (Codex C2: db-proof/ui)
-    const fs = await import('node:fs')
-    const path = await import('node:path')
     const uiProofDir = path.join(process.env.CI_ARTIFACT_DIR || 'ci-artifacts', 'db-proof', 'ui')
     fs.mkdirSync(uiProofDir, { recursive: true })
     fs.writeFileSync(path.join(uiProofDir, 'quote-id.txt'), String(body.id))
