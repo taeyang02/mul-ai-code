@@ -216,13 +216,17 @@ onMounted(() => {
 
     <!-- Main Content -->
     <main class="flex-grow">
-      <!-- Hero (With isolated error & retry) -->
+      <!-- Hero (With isolated error & retry and dynamic catalog Quick Specs) -->
       <HeroSection
         :site="site"
+        :products="products"
         :loading="loadingSite"
+        :loading-products="loadingProducts"
         :error="errorSite"
+        :error-products="errorProducts"
         @open-quote="openQuoteModal('')"
         @retry="fetchSite"
+        @retry-products="fetchProducts"
       />
 
       <!-- Giới thiệu (With isolated error & retry) -->

@@ -17,7 +17,7 @@ const currentYear = new Date().getFullYear()
         <!-- Col 1: Brand Info -->
         <div>
           <div class="flex items-center gap-2.5">
-            <i class="fas fa-industry text-2xl text-[#B45309]" aria-hidden="true"></i>
+            <i class="fas fa-hard-hat text-2xl text-[#B45309]" aria-hidden="true"></i>
             <span class="font-extrabold text-white text-lg tracking-tight">
               {{ company?.legalName || site?.brandName || '' }}
             </span>

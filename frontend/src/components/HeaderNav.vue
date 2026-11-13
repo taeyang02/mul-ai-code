@@ -89,7 +89,7 @@ onUnmounted(() => {
     <div class="container mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
       <!-- Logo & Company Brand -->
       <a href="#home" class="flex items-center space-x-2.5 focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded-lg p-1">
-        <i class="fas fa-industry text-2xl md:text-3xl text-[#0F2438]" aria-hidden="true"></i>
+        <i class="fas fa-hard-hat text-2xl md:text-3xl text-[#0F2438]" aria-hidden="true"></i>
         <div class="leading-tight">
           <h1 class="font-extrabold text-base md:text-xl tracking-tight text-[#0F2438]">
             {{ site?.brandName || '' }}
@@ -190,7 +190,7 @@ onUnmounted(() => {
       >
         <div class="flex items-center justify-between border-b pb-4">
           <div class="flex items-center space-x-2">
-            <i class="fas fa-industry text-2xl text-[#0F2438]" aria-hidden="true"></i>
+            <i class="fas fa-hard-hat text-2xl text-[#0F2438]" aria-hidden="true"></i>
             <span id="mobile-nav-drawer-title" class="font-bold text-[#0F2438]">{{ site?.brandName || '' }}</span>
           </div>
           <button

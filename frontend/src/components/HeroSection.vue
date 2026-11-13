@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import type { SiteResponse, ErrorResponse } from '@/types/api'
+import type { SiteResponse, ProductResponse, ErrorResponse } from '@/types/api'
 import StatusAlert from '@/components/StatusAlert.vue'
 
 defineProps<{
   site: SiteResponse | null
+  products?: ProductResponse[]
   loading?: boolean
+  loadingProducts?: boolean
   error?: ErrorResponse | null
+  errorProducts?: ErrorResponse | null
 }>()
 
 const emit = defineEmits<{
   (e: 'openQuote'): void
   (e: 'retry'): void
+  (e: 'retryProducts'): void
 }>()
 </script>
 
@@ -97,7 +101,7 @@ const emit = defineEmits<{
           </div>
         </div>
 
-        <!-- Hero Right Column: Quick Specs Widget -->
+        <!-- Hero Right Column: Quick Specs Widget (Dynamic Products from API) -->
         <div class="lg:col-span-5">
           <div class="bg-[#0F2438]/90 border border-slate-700 border-t-4 border-t-[#B45309] rounded-md p-6 shadow-2xl">
             <div class="flex items-center justify-between border-b border-slate-700 pb-3 mb-4">
@@ -110,22 +114,48 @@ const emit = defineEmits<{
               </span>
             </div>
 
-            <ul class="space-y-3 text-xs sm:text-sm">
-              <li class="flex items-center justify-between p-2.5 bg-slate-800/60 rounded border border-slate-700/60">
-                <span class="font-bold text-slate-200">Thép xây dựng (Hòa Phát)</span>
-                <span class="font-mono text-[#FDE68A] text-xs">D6 - D32 / JIS, ASTM</span>
-              </li>
-              <li class="flex items-center justify-between p-2.5 bg-slate-800/60 rounded border border-slate-700/60">
-                <span class="font-bold text-slate-200">Xi măng (Pomihua)</span>
-                <span class="font-mono text-[#FDE68A] text-xs">PCB30 - PCB40 / Bao 50kg</span>
+            <!-- Error State with Retry Button -->
+            <div v-if="errorProducts" class="p-3 bg-red-950/60 border border-red-800/80 rounded text-red-200 text-xs">
+              <p class="font-medium mb-2">{{ errorProducts.message || 'Không thể tải danh mục sản phẩm.' }}</p>
+              <button
+                type="button"
+                @click="emit('retryProducts')"
+                class="text-xs font-bold text-amber-300 hover:underline flex items-center gap-1 focus:outline-none focus:ring-1 focus:ring-amber-300 rounded px-1"
+              >
+                <i class="fas fa-rotate-right" aria-hidden="true"></i> Thử lại
+              </button>
+            </div>
+
+            <!-- Loading Skeleton -->
+            <div v-else-if="loadingProducts && (!products || products.length === 0)" class="space-y-3 animate-pulse">
+              <div v-for="i in 2" :key="i" class="h-12 bg-slate-800/70 rounded border border-slate-700/60"></div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else-if="!products || products.length === 0" class="p-4 text-center text-slate-400 text-xs bg-slate-800/40 rounded border border-slate-700/60">
+              <i class="fas fa-box-open text-lg mb-1 block opacity-60" aria-hidden="true"></i>
+              Hiện chưa có dữ liệu danh mục sản phẩm.
+            </div>
+
+            <!-- Dynamic Products List -->
+            <ul v-else class="space-y-3 text-xs sm:text-sm">
+              <li
+                v-for="product in products"
+                :key="product.id"
+                class="flex items-center justify-between p-2.5 bg-slate-800/60 rounded border border-slate-700/60 gap-3"
+              >
+                <div class="truncate">
+                  <span class="font-bold text-slate-200 block truncate">{{ product.name }}</span>
+                  <span v-if="product.brand" class="text-[11px] text-slate-400 block truncate">{{ product.brand }}</span>
+                </div>
+                <span v-if="product.specsSummary" class="font-mono text-[#FDE68A] text-xs shrink-0 text-right">
+                  {{ product.specsSummary }}
+                </span>
+                <span v-else-if="product.category?.name" class="font-mono text-slate-300 text-xs shrink-0 text-right">
+                  {{ product.category.name }}
+                </span>
               </li>
             </ul>
-
-            <div class="mt-4 pt-3 border-t border-slate-800 text-right">
-              <span class="text-[11px] text-slate-400">
-                * Hiển thị theo danh mục và specsSummary từ API
-              </span>
-            </div>
           </div>
         </div>
       </div>
