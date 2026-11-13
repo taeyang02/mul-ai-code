@@ -64,4 +64,4 @@ After a synthetic quote POST succeeds, Playwright writes:
 | `$CI_ARTIFACT_DIR/db-proof/quote-id.txt` | UUID from `201` response body `id` |
 | `$CI_ARTIFACT_DIR/db-proof/quote-marker.txt` | Marker substring embedded in the quote `message` |
 
-`db-proof.sh` then records `postgres-version.txt`, `flyway-schema-history.txt`, and parameterized `quote-lookup.txt`. Missing quote files ⇒ migration evidence may still `PASS` with quote lookup honestly `SKIPPED` — never a forged whole-suite PASS.
+`db-proof.sh` records `migration_status` and `quote_status` separately in `result.txt`. **Overall `status=PASS` (exit 0) only when both are PASS.** Migration success requires a successful structured flyway query with enough `success=true` rows — never by grepping the table name. Missing DB, missing quote files, empty/failed history, or no matching quote row ⇒ overall `FAIL` (exit 1) and blocks the CI gate. Logic self-test: `scripts/ci/db-proof-selftest.sh` (psql stub; not a real CI run).
