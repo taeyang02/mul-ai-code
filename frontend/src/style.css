@@ -29,25 +29,41 @@
 }
 
 .btn-primary {
-  background: linear-gradient(105deg, #1e4a6b 0%, #0f3b4f 100%);
-  transition: all 0.3s;
+  background: #B45309;
+  color: #FFFFFF;
+  transition: all 0.25s ease-in-out;
 }
 .btn-primary:hover {
-  background: linear-gradient(105deg, #0f3b4f 0%, #0a2e3f 100%);
-  transform: scale(1.02);
-  box-shadow: 0 10px 20px -5px rgba(30, 74, 107, 0.4);
+  background: #9A3412;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -4px rgba(180, 83, 9, 0.4);
+}
+
+.btn-secondary-steel {
+  background: transparent;
+  color: #FFFFFF;
+  border: 1px solid #94A3B8;
+  transition: all 0.25s ease-in-out;
+}
+.btn-secondary-steel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #FFFFFF;
 }
 
 .card-shadow {
-  box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 .bg-industrial {
-  background: radial-gradient(circle at 10% 20%, rgba(245, 248, 250, 0.9), rgba(235, 242, 245, 0.95));
+  background: linear-gradient(135deg, #091724 0%, #0F2438 60%, #17324B 100%);
+}
+
+.bg-cool-surface {
+  background-color: #F1F5F9;
 }
 
 .text-gradient-brand {
-  background: linear-gradient(120deg, #1e5a6b, #2c7a5e);
+  background: linear-gradient(120deg, #0F2438, #B45309);
   background-clip: text;
   -webkit-background-clip: text;
   color: transparent;

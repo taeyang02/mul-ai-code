@@ -8,10 +8,19 @@ export default {
     extend: {
       colors: {
         brand: {
-          blue: '#1e5a6b',
-          dark: '#0f3b4f',
-          green: '#2c7a5e',
-          light: '#f5f8fa',
+          navy: '#0F2438',
+          dark: '#071521',
+          slate: '#1E293B',
+          amber: '#B45309',
+          'amber-hover': '#9A3412',
+          'amber-tint': '#FEF3C7',
+          cool: '#F1F5F9',
+          grey: '#475569',
+          steel: '#CBD5E1',
+          // Backwards-compatible aliases mapped to the new palette:
+          blue: '#0F2438',
+          green: '#B45309',
+          light: '#F1F5F9',
         }
       }
     },

@@ -41,13 +41,13 @@ function getIconClass(iconKey?: string | null): string {
     <div class="container mx-auto px-5 md:px-8">
       <!-- Title -->
       <div class="text-center max-w-2xl mx-auto mb-14">
-        <span class="text-[#1e5a6b] font-semibold text-xs md:text-sm bg-gray-100 px-4 py-1.5 rounded-full inline-block">
-          Tại sao chọn Thanh An?
+        <span class="text-[#0F2438] font-bold text-xs md:text-sm bg-slate-100 px-4 py-1.5 rounded-full inline-block border border-slate-200 uppercase tracking-wider">
+          CAM KẾT CHẤT LƯỢNG
         </span>
-        <h2 class="text-3xl md:text-4xl font-extrabold mt-3 text-gray-800">
+        <h2 class="text-3xl md:text-4xl font-extrabold mt-3 text-[#0F2438]">
           Lợi thế cạnh tranh <br> vượt trội
         </h2>
-        <div class="w-16 h-1 bg-[#2c7a5e] mx-auto mt-4 rounded-full"></div>
+        <div class="w-16 h-1 bg-[#B45309] mx-auto mt-4 rounded-full"></div>
       </div>
 
       <!-- Section Error State with Retry Button -->
@@ -73,17 +73,22 @@ function getIconClass(iconKey?: string | null): string {
       <!-- Grid Cards -->
       <div v-else-if="advantages.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-7">
         <div
-          v-for="adv in advantages"
+          v-for="(adv, index) in advantages"
           :key="adv.id"
-          class="bg-gray-50 p-6 rounded-xl card-shadow text-center transition-all hover:shadow-xl hover:-translate-y-1 duration-300 border-b-4 border-[#2c7a5e] flex flex-col justify-start"
+          class="bg-slate-50 p-6 rounded-xl card-shadow text-left transition-all hover:shadow-xl hover:-translate-y-1 duration-300 border border-slate-200 border-b-4 border-b-[#B45309] flex flex-col justify-start"
         >
-          <div class="w-16 h-16 bg-[#1e5a6b]/10 rounded-full flex items-center justify-center mx-auto mb-4 text-[#1e5a6b]">
-            <i :class="getIconClass(adv.iconKey)" class="text-3xl" aria-hidden="true"></i>
+          <div class="flex items-center justify-between mb-4">
+            <span class="inline-flex items-center justify-center w-7 h-7 rounded border border-[#CBD5E1] bg-[#F1F5F9] text-[#0F2438] text-xs font-mono font-bold">
+              {{ String(index + 1).padStart(2, '0') }}
+            </span>
+            <div class="w-12 h-12 bg-[#0F2438]/10 rounded-full flex items-center justify-center text-[#0F2438]">
+              <i :class="getIconClass(adv.iconKey)" class="text-xl" aria-hidden="true"></i>
+            </div>
           </div>
-          <h3 class="text-lg md:text-xl font-bold text-gray-800">
+          <h3 class="text-lg md:text-xl font-bold text-[#0F2438]">
             {{ adv.title }}
           </h3>
-          <p class="text-gray-600 mt-2.5 text-sm leading-relaxed">
+          <p class="text-slate-600 mt-2.5 text-sm leading-relaxed">
             {{ adv.description }}
           </p>
         </div>

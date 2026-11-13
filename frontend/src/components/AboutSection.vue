@@ -18,13 +18,13 @@ const emit = defineEmits<{
     <div class="container mx-auto px-5 md:px-8">
       <!-- Section Title -->
       <div class="text-center max-w-3xl mx-auto mb-14">
-        <span class="text-[#1e5a6b] font-semibold tracking-wider uppercase text-xs md:text-sm bg-gray-100 px-4 py-1.5 rounded-full inline-block">
+        <span class="text-[#0F2438] font-bold tracking-wider uppercase text-xs md:text-sm bg-slate-100 px-4 py-1.5 rounded-full inline-block border border-slate-200">
           Về chúng tôi
         </span>
-        <h2 class="text-3xl md:text-4xl font-extrabold mt-4 text-gray-800">
+        <h2 class="text-3xl md:text-4xl font-extrabold mt-4 text-[#0F2438]">
           {{ company?.legalName || company?.tradeName || 'Thông tin doanh nghiệp' }}
         </h2>
-        <div class="w-20 h-1 bg-[#2c7a5e] mx-auto mt-4 rounded-full"></div>
+        <div class="w-20 h-1 bg-[#B45309] mx-auto mt-4 rounded-full"></div>
       </div>
 
       <!-- Section Error State with Retry -->
@@ -55,74 +55,74 @@ const emit = defineEmits<{
             v-if="company.statusLabel || company.foundedOn || company.industry || company.serviceArea"
             class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2"
           >
-            <div v-if="company.statusLabel" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-building text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
+            <div v-if="company.statusLabel" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <i class="fas fa-building text-2xl text-[#0F2438] mt-1" aria-hidden="true"></i>
               <div>
-                <span class="font-bold text-gray-800 text-sm block">Trạng thái:</span>
-                <span class="text-gray-600 text-sm">{{ company.statusLabel }}</span>
+                <span class="font-bold text-[#0F2438] text-sm block">Trạng thái:</span>
+                <span class="text-slate-600 text-sm">{{ company.statusLabel }}</span>
               </div>
             </div>
 
-            <div v-if="company.foundedOn" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-calendar-alt text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
+            <div v-if="company.foundedOn" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <i class="fas fa-calendar-alt text-2xl text-[#0F2438] mt-1" aria-hidden="true"></i>
               <div>
-                <span class="font-bold text-gray-800 text-sm block">Ngày thành lập:</span>
-                <span class="text-gray-600 text-sm">{{ company.foundedOn }}</span>
+                <span class="font-bold text-[#0F2438] text-sm block">Ngày thành lập:</span>
+                <span class="text-slate-600 text-sm">{{ company.foundedOn }}</span>
               </div>
             </div>
 
-            <div v-if="company.industry" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-hard-hat text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
+            <div v-if="company.industry" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <i class="fas fa-industry text-2xl text-[#0F2438] mt-1" aria-hidden="true"></i>
               <div>
-                <span class="font-bold text-gray-800 text-sm block">Ngành nghề:</span>
-                <span class="text-gray-600 text-sm">{{ company.industry }}</span>
+                <span class="font-bold text-[#0F2438] text-sm block">Ngành nghề:</span>
+                <span class="text-slate-600 text-sm">{{ company.industry }}</span>
               </div>
             </div>
 
-            <div v-if="company.serviceArea" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-gray-50 border border-gray-100">
-              <i class="fas fa-map-marker-alt text-2xl text-[#1e5a6b] mt-1" aria-hidden="true"></i>
+            <div v-if="company.serviceArea" class="flex items-start gap-3.5 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+              <i class="fas fa-map-marker-alt text-2xl text-[#0F2438] mt-1" aria-hidden="true"></i>
               <div>
-                <span class="font-bold text-gray-800 text-sm block">Khu vực phân phối:</span>
-                <span class="text-gray-600 text-sm">{{ company.serviceArea }}</span>
+                <span class="font-bold text-[#0F2438] text-sm block">Khu vực phân phối:</span>
+                <span class="text-slate-600 text-sm">{{ company.serviceArea }}</span>
               </div>
             </div>
           </div>
 
-          <p v-if="company.mission" class="text-gray-600 italic border-l-4 border-[#2c7a5e] pl-4 text-sm md:text-base bg-emerald-50/50 py-2.5 rounded-r">
+          <p v-if="company.mission" class="text-slate-700 italic border-l-4 border-[#B45309] pl-4 text-sm md:text-base bg-amber-50/60 py-2.5 rounded-r">
             <strong>Sứ mệnh:</strong> {{ company.mission }}
           </p>
         </div>
 
         <!-- Right: Highlight Card from Company API -->
-        <div class="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-md border border-gray-200">
+        <div class="bg-slate-100 rounded-2xl p-6 shadow-sm border border-slate-200">
           <div class="bg-white rounded-xl p-6 md:p-8 card-shadow space-y-5">
-            <div v-if="company.highlightTitle" class="flex items-center gap-3 text-[#1e5a6b]">
-              <i class="fas fa-chart-line text-3xl" aria-hidden="true"></i>
-              <h3 class="font-bold text-xl md:text-2xl text-gray-800">
+            <div v-if="company.highlightTitle" class="flex items-center gap-3 text-[#0F2438]">
+              <i class="fas fa-chart-line text-3xl text-[#B45309]" aria-hidden="true"></i>
+              <h3 class="font-bold text-xl md:text-2xl text-[#0F2438]">
                 {{ company.highlightTitle }}
               </h3>
             </div>
             
-            <p v-if="company.highlightBody" class="text-gray-600 text-sm md:text-base leading-relaxed">
+            <p v-if="company.highlightBody" class="text-slate-600 text-sm md:text-base leading-relaxed">
               {{ company.highlightBody }}
             </p>
 
             <div
               v-if="company.projectsCompletedLabel || company.partnersLabel"
-              class="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100 text-center"
+              class="grid grid-cols-2 gap-4 pt-3 border-t border-slate-100 text-center"
             >
-              <div v-if="company.projectsCompletedLabel" class="bg-blue-50/70 border border-blue-100 rounded-xl p-4">
-                <span class="font-black text-[#1e5a6b] text-2xl md:text-3xl block">
+              <div v-if="company.projectsCompletedLabel" class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                <span class="font-black text-[#0F2438] text-2xl md:text-3xl block">
                   {{ company.projectsCompletedLabel }}
                 </span>
-                <p class="text-xs text-gray-600 font-medium mt-1">Dự án hoàn thành</p>
+                <p class="text-xs text-slate-600 font-medium mt-1">Dự án hoàn thành</p>
               </div>
 
-              <div v-if="company.partnersLabel" class="bg-emerald-50/70 border border-emerald-100 rounded-xl p-4">
-                <span class="font-black text-[#2c7a5e] text-2xl md:text-3xl block">
+              <div v-if="company.partnersLabel" class="bg-amber-50/60 border border-amber-200/60 rounded-xl p-4">
+                <span class="font-black text-[#B45309] text-2xl md:text-3xl block">
                   {{ company.partnersLabel }}
                 </span>
-                <p class="text-xs text-gray-600 font-medium mt-1">Đối tác thân thiết</p>
+                <p class="text-xs text-slate-600 font-medium mt-1">Đối tác thân thiết</p>
               </div>
             </div>
           </div>

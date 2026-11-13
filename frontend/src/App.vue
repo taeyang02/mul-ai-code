@@ -283,9 +283,9 @@ onMounted(() => {
     <transition name="fade">
       <div
         v-if="toastMessage"
-        class="fixed bottom-6 right-6 z-50 bg-gray-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 border border-gray-700 text-sm"
+        class="fixed bottom-6 right-6 z-50 bg-[#0F2438] text-white px-5 py-3 rounded-lg shadow-2xl flex items-center gap-3 border border-slate-700 text-sm"
       >
-        <i class="fas fa-check-circle text-emerald-400 text-lg"></i>
+        <i class="fas fa-check-circle text-[#FDE68A] text-lg"></i>
         <span>{{ toastMessage }}</span>
       </div>
     </transition>

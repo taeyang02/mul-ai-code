@@ -214,7 +214,7 @@ async function handleSubmit() {
         ref="closeBtnRef"
         type="button"
         @click="emit('close')"
-        class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl p-1 rounded-lg hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+        class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-xl p-1 rounded-lg hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
         aria-label="Đóng cửa sổ"
       >
         <i class="fas fa-times" aria-hidden="true"></i>
@@ -222,10 +222,10 @@ async function handleSubmit() {
 
       <!-- Modal Header -->
       <div class="mb-6">
-        <span class="text-[#1e5a6b] text-xs font-bold uppercase tracking-wider bg-gray-100 px-3 py-1 rounded-full">
+        <span class="text-[#0F2438] text-xs font-bold uppercase tracking-wider bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
           Tư vấn & Báo giá
         </span>
-        <h3 id="quote-modal-title" class="text-2xl font-bold text-gray-800 mt-2">
+        <h3 id="quote-modal-title" class="text-2xl font-bold text-[#0F2438] mt-2">
           Yêu cầu báo giá trực tuyến
         </h3>
         <p class="text-gray-600 text-sm mt-1">
@@ -236,7 +236,7 @@ async function handleSubmit() {
       <!-- Success feedback -->
       <div
         v-if="successMessage"
-        role="alert"
+        role="status"
         aria-live="polite"
         data-testid="quote-success-alert"
         class="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm flex items-start gap-3"
@@ -292,7 +292,7 @@ async function handleSubmit() {
             type="text"
             required
             placeholder="Ví dụ: Nguyễn Văn A"
-            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2438] text-sm text-gray-800 placeholder-gray-400"
             :class="{ 'border-red-500 bg-red-50/50': fieldErrors.fullName }"
             :aria-invalid="!!fieldErrors.fullName"
             :aria-describedby="fieldErrors.fullName ? 'quote-error-fullName' : undefined"
@@ -314,7 +314,7 @@ async function handleSubmit() {
               type="tel"
               required
               placeholder="0393.xxx.xxx"
-              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2438] text-sm text-gray-800 placeholder-gray-400"
               :class="{ 'border-red-500 bg-red-50/50': fieldErrors.phone }"
               :aria-invalid="!!fieldErrors.phone"
               :aria-describedby="fieldErrors.phone ? 'quote-error-phone' : undefined"
@@ -333,7 +333,7 @@ async function handleSubmit() {
               v-model="form.email"
               type="email"
               placeholder="email@vidu.com"
-              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2438] text-sm text-gray-800 placeholder-gray-400"
               :class="{ 'border-red-500 bg-red-50/50': fieldErrors.email }"
               :aria-invalid="!!fieldErrors.email"
               :aria-describedby="fieldErrors.email ? 'quote-error-email' : undefined"
@@ -355,7 +355,7 @@ async function handleSubmit() {
               v-model="form.companyName"
               type="text"
               placeholder="Ví dụ: Công ty Xây dựng ABC"
-              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2438] text-sm text-gray-800 placeholder-gray-400"
             />
           </div>
 
@@ -366,7 +366,7 @@ async function handleSubmit() {
             <select
               id="quote-product-interest"
               v-model="form.productInterest"
-              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 bg-white"
+              class="w-full px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2438] text-sm text-gray-800 bg-white"
             >
               <option value="">-- Chọn sản phẩm --</option>
               <option
@@ -392,7 +392,7 @@ async function handleSubmit() {
             rows="3"
             required
             placeholder="Ví dụ: Xin báo giá số lượng vật tư giao tại công trình..."
-            class="w-full px-3.5 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] text-sm text-gray-800 placeholder-gray-400"
+            class="w-full px-3.5 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#0F2438] text-sm text-gray-800 placeholder-gray-400"
             :class="{ 'border-red-500 bg-red-50/50': fieldErrors.message }"
             :aria-invalid="!!fieldErrors.message"
             :aria-describedby="fieldErrors.message ? 'quote-error-message' : undefined"
@@ -407,7 +407,7 @@ async function handleSubmit() {
           <button
             type="button"
             @click="emit('close')"
-            class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+            class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 text-sm font-semibold hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
           >
             Hủy
           </button>
@@ -415,7 +415,7 @@ async function handleSubmit() {
           <button
             type="submit"
             :disabled="submitting"
-            class="btn-primary text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+            class="btn-primary text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#B45309]"
           >
             <i v-if="submitting" class="fas fa-spinner fa-spin" aria-hidden="true"></i>
             <span>{{ submitting ? 'Đang gửi yêu cầu...' : 'Gửi yêu cầu báo giá' }}</span>

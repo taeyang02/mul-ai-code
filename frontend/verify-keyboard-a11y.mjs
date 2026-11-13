@@ -65,24 +65,44 @@ function findChromeExecutable() {
   if (process.env.CHROME_PATH && fs.existsSync(process.env.CHROME_PATH)) {
     return process.env.CHROME_PATH
   }
+  if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH && fs.existsSync(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)) {
+    return process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+  }
   try {
     const pwPath = chromium.executablePath()
     if (pwPath && fs.existsSync(pwPath)) return pwPath
   } catch {
     /* ignore */
   }
-  const candidates = [
-    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,
-    '/home/runner/.cache/ms-playwright/chromium_headless_shell-1148/chrome-linux/headless_shell',
-    '/home/runner/.cache/ms-playwright/chromium-1148/chrome-linux/chrome',
-    '/home/multica/.cache/ms-playwright/chromium_headless_shell-1148/chrome-linux/headless_shell',
-    '/home/multica/.cache/ms-playwright/chromium-1148/chrome-linux/chrome',
-    '/home/multica/.cache/ms-playwright/chromium_headless_shell-1254/chrome-headless-shell-linux64/chrome-headless-shell',
+
+  // Dynamic search in user's ms-playwright cache without pinning specific revisions
+  const homeDir = process.env.HOME || ''
+  const pwCacheDir = path.join(homeDir, '.cache', 'ms-playwright')
+  if (fs.existsSync(pwCacheDir)) {
+    try {
+      const entries = fs.readdirSync(pwCacheDir).sort().reverse()
+      for (const entry of entries) {
+        const potentialPaths = [
+          path.join(pwCacheDir, entry, 'chrome-headless-shell-linux64', 'chrome-headless-shell'),
+          path.join(pwCacheDir, entry, 'chrome-linux', 'headless_shell'),
+          path.join(pwCacheDir, entry, 'chrome-linux', 'chrome'),
+        ]
+        for (const p of potentialPaths) {
+          if (fs.existsSync(p)) return p
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Standard system binaries
+  const standardSystemPaths = [
     '/usr/bin/google-chrome',
     '/usr/bin/chromium-browser',
     '/usr/bin/chromium',
   ]
-  for (const c of candidates) {
+  for (const c of standardSystemPaths) {
     if (c && fs.existsSync(c)) return c
   }
   return null

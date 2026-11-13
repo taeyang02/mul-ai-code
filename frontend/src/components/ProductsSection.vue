@@ -39,17 +39,17 @@ function getCategoryIcon(catSlug?: string): string {
 </script>
 
 <template>
-  <section id="products" class="py-16 md:py-24 bg-gray-50 border-b border-gray-200">
+  <section id="products" class="py-16 md:py-24 bg-cool-surface border-b border-gray-200">
     <div class="container mx-auto px-5 md:px-8">
       <!-- Section Header (Neutral UI chrome) -->
       <div class="text-center max-w-2xl mx-auto mb-10">
-        <span class="bg-white text-[#1e5a6b] px-4 py-1.5 rounded-full text-xs md:text-sm font-semibold shadow-sm border border-gray-200 inline-block">
+        <span class="bg-white text-[#0F2438] px-4 py-1.5 rounded-full text-xs md:text-sm font-bold shadow-sm border border-slate-200 inline-block uppercase tracking-wider">
           Sản phẩm
         </span>
-        <h2 class="text-3xl md:text-4xl font-extrabold mt-4 text-gray-800">
+        <h2 class="text-3xl md:text-4xl font-extrabold mt-4 text-[#0F2438]">
           Danh mục sản phẩm
         </h2>
-        <div class="w-16 h-1 bg-[#2c7a5e] mx-auto mt-3.5 mb-2 rounded-full"></div>
+        <div class="w-16 h-1 bg-[#B45309] mx-auto mt-3.5 mb-2 rounded-full"></div>
       </div>
 
       <!-- Section Error State with Retry Button (Specifically addresses partial API failure) -->
@@ -79,8 +79,8 @@ function getCategoryIcon(catSlug?: string): string {
         <button
           type="button"
           @click="selectedCategory = 'all'"
-          class="px-4 py-2 rounded-lg text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
-          :class="selectedCategory === 'all' ? 'bg-[#1e5a6b] text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'"
+          class="px-4 py-2 rounded-md text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
+          :class="selectedCategory === 'all' ? 'bg-[#0F2438] text-white shadow' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
         >
           Tất cả sản phẩm
         </button>
@@ -89,8 +89,8 @@ function getCategoryIcon(catSlug?: string): string {
           :key="cat.id"
           type="button"
           @click="selectedCategory = cat.slug"
-          class="px-4 py-2 rounded-lg text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
-          :class="selectedCategory === cat.slug ? 'bg-[#1e5a6b] text-white shadow' : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'"
+          class="px-4 py-2 rounded-md text-sm font-bold transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
+          :class="selectedCategory === cat.slug ? 'bg-[#0F2438] text-white shadow' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'"
         >
           {{ cat.name }}
         </button>
@@ -118,10 +118,10 @@ function getCategoryIcon(catSlug?: string): string {
         <div
           v-for="product in filteredProducts"
           :key="product.id"
-          class="group bg-white rounded-2xl card-shadow hover-lift transition-smooth overflow-hidden border border-gray-200/80 flex flex-col justify-between"
+          class="group bg-white rounded-xl card-shadow hover-lift transition-smooth overflow-hidden border border-slate-200 flex flex-col justify-between"
         >
           <!-- Product Visual Header: Prioritizes product.imageUrl when present; otherwise uses category-driven icon -->
-          <div class="h-48 bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center relative text-white transition-all overflow-hidden">
+          <div class="h-48 bg-gradient-to-br from-slate-900 to-[#0F2438] flex items-center justify-center relative text-white transition-all overflow-hidden border-b border-slate-200">
             <img
               v-if="product.imageUrl"
               :src="product.imageUrl"
@@ -137,13 +137,13 @@ function getCategoryIcon(catSlug?: string): string {
             <!-- Specs Summary / Badge -->
             <div
               v-if="product.specsSummary"
-              class="absolute bottom-3 left-4 bg-black/50 backdrop-blur-sm px-3.5 py-1 rounded-full text-white text-xs font-semibold border border-white/20"
+              class="absolute bottom-3 left-4 bg-[#0F2438]/90 backdrop-blur-sm px-3.5 py-1 rounded text-[#FDE68A] text-xs font-mono font-bold border border-[#B45309]/40 shadow-sm"
             >
               {{ product.specsSummary }}
             </div>
             <div
               v-else-if="product.brand"
-              class="absolute bottom-3 left-4 bg-black/50 backdrop-blur-sm px-3.5 py-1 rounded-full text-white text-xs font-semibold border border-white/20"
+              class="absolute bottom-3 left-4 bg-[#0F2438]/90 backdrop-blur-sm px-3.5 py-1 rounded text-[#FDE68A] text-xs font-mono font-bold border border-[#B45309]/40 shadow-sm"
             >
               {{ product.brand }}
             </div>
@@ -154,49 +154,49 @@ function getCategoryIcon(catSlug?: string): string {
             <div>
               <div class="flex justify-between items-start gap-4">
                 <div>
-                  <h3 class="text-2xl font-bold text-gray-800 group-hover:text-[#1e5a6b] transition">
+                  <h3 class="text-2xl font-bold text-[#0F2438] group-hover:text-[#B45309] transition">
                     {{ product.name }}
                   </h3>
-                  <p v-if="product.shortDescription" class="text-sm text-[#1e5a6b] font-medium mt-0.5">
+                  <p v-if="product.shortDescription" class="text-sm text-[#B45309] font-semibold mt-0.5">
                     {{ product.shortDescription }}
                   </p>
                 </div>
                 <span
                   v-if="product.category?.name"
-                  class="text-xs bg-emerald-50 text-[#2c7a5e] border border-emerald-200 px-2.5 py-1 rounded font-semibold"
+                  class="text-xs bg-slate-100 text-[#0F2438] border border-slate-200 px-2.5 py-1 rounded font-bold"
                 >
                   {{ product.category.name }}
                 </span>
               </div>
 
-              <p v-if="product.description" class="text-gray-600 mt-4 leading-relaxed text-sm md:text-base">
+              <p v-if="product.description" class="text-slate-600 mt-4 leading-relaxed text-sm md:text-base">
                 {{ product.description }}
               </p>
 
               <!-- Features / Specifications list (strictly from API) -->
-              <ul v-if="product.features && product.features.length" class="mt-4 space-y-2 text-gray-600 text-sm">
+              <ul v-if="product.features && product.features.length" class="mt-4 space-y-2 text-slate-600 text-sm">
                 <li
                   v-for="(feat, fIdx) in product.features"
                   :key="fIdx"
                   class="flex items-center gap-2"
                 >
-                  <i class="fas fa-check text-[#2c7a5e] text-xs" aria-hidden="true"></i>
+                  <i class="fas fa-check text-[#B45309] text-xs" aria-hidden="true"></i>
                   <span>{{ feat }}</span>
                 </li>
               </ul>
             </div>
 
             <!-- Action Button -->
-            <div class="mt-8 pt-5 border-t border-gray-100 flex items-center justify-between">
-              <span v-if="product.brand" class="text-xs text-gray-400 font-medium">
-                Thương hiệu: <strong class="text-gray-700">{{ product.brand }}</strong>
+            <div class="mt-8 pt-5 border-t border-slate-100 flex items-center justify-between">
+              <span v-if="product.brand" class="text-xs text-slate-500 font-medium">
+                Thương hiệu: <strong class="text-[#0F2438] font-bold">{{ product.brand }}</strong>
               </span>
               <span v-else></span>
               
               <button
                 type="button"
                 @click="emit('selectProduct', product.name)"
-                class="btn-primary text-white px-5 py-2.5 rounded-lg text-sm font-semibold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+                class="btn-primary text-white px-5 py-2.5 rounded-md text-sm font-bold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#B45309]"
               >
                 <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Nhận báo giá
               </button>

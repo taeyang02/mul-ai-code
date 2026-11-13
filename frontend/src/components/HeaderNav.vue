@@ -85,29 +85,29 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm transition-all">
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b-2 border-[#B45309] shadow-sm transition-all">
     <div class="container mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
       <!-- Logo & Company Brand -->
-      <a href="#home" class="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] rounded-lg p-1">
-        <i class="fas fa-hard-hat text-2xl md:text-3xl text-[#1e5a6b]" aria-hidden="true"></i>
+      <a href="#home" class="flex items-center space-x-2.5 focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded-lg p-1">
+        <i class="fas fa-industry text-2xl md:text-3xl text-[#0F2438]" aria-hidden="true"></i>
         <div class="leading-tight">
-          <h1 class="font-extrabold text-base md:text-xl tracking-tight text-gray-800">
+          <h1 class="font-extrabold text-base md:text-xl tracking-tight text-[#0F2438]">
             {{ site?.brandName || '' }}
           </h1>
-          <p v-if="site?.tagline" class="text-[10px] md:text-xs font-semibold text-[#2c7a5e] tracking-wider uppercase">
+          <p v-if="site?.tagline" class="text-[10px] md:text-xs font-bold text-[#B45309] tracking-wider uppercase">
             {{ site.tagline }}
           </p>
         </div>
       </a>
 
       <!-- Desktop Navigation (hidden on mobile, strictly driven by site.navItems) -->
-      <nav aria-label="Điều hướng chính" class="hidden md:flex items-center space-x-7 font-medium text-gray-700">
+      <nav aria-label="Điều hướng chính" class="hidden md:flex items-center space-x-7 font-semibold text-slate-700">
         <template v-if="site?.navItems && site.navItems.length > 0">
           <a
             v-for="(item, idx) in site.navItems"
             :key="idx"
             :href="item.href"
-            class="hover:text-[#1e5a6b] transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] rounded px-1"
+            class="hover:text-[#0F2438] transition focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded px-1"
           >
             {{ item.label }}
           </a>
@@ -116,7 +116,7 @@ onUnmounted(() => {
         <button
           type="button"
           @click="emit('openQuote')"
-          class="btn-primary text-white px-4 py-2 rounded-lg text-sm font-semibold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+          class="btn-primary text-white px-4 py-2 rounded-md text-sm font-bold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#B45309]"
         >
           <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Nhận báo giá
         </button>
@@ -128,10 +128,10 @@ onUnmounted(() => {
         <a
           v-if="contact?.hotlineDisplay"
           :href="'tel:' + (contact.hotlineE164 || contact.hotlineDisplay)"
-          class="flex items-center gap-1.5 bg-[#1e5a6b]/10 text-[#1e5a6b] border border-[#1e5a6b]/20 hover:bg-[#1e5a6b] hover:text-white px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-lg font-bold text-xs md:text-sm transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+          class="flex items-center gap-1.5 bg-[#0F2438]/5 text-[#0F2438] border border-[#0F2438]/20 hover:bg-[#0F2438] hover:text-white px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
           aria-label="Gọi hotline tư vấn"
         >
-          <i class="fas fa-phone-alt text-xs md:text-sm" aria-hidden="true"></i>
+          <i class="fas fa-phone-alt text-xs md:text-sm text-[#B45309]" aria-hidden="true"></i>
           <span class="tracking-tight">{{ contact.hotlineDisplay }}</span>
         </a>
 
@@ -140,13 +140,13 @@ onUnmounted(() => {
           ref="toggleBtnRef"
           type="button"
           @click="toggleMobileMenu"
-          class="md:hidden text-xl text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#1e5a6b] p-1.5 rounded-lg hover:bg-gray-100 border border-gray-200"
+          class="md:hidden text-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F2438] p-1.5 rounded-md hover:bg-slate-100 border border-slate-200"
           aria-label="Toggle Navigation Menu"
           :aria-expanded="mobileMenuOpen"
           aria-controls="mobile-nav-drawer"
           aria-haspopup="dialog"
         >
-          <i :class="mobileMenuOpen ? 'fas fa-times text-[#1e5a6b]' : 'fas fa-bars'" aria-hidden="true"></i>
+          <i :class="mobileMenuOpen ? 'fas fa-times text-[#0F2438]' : 'fas fa-bars'" aria-hidden="true"></i>
         </button>
       </div>
     </div>
@@ -190,27 +190,27 @@ onUnmounted(() => {
       >
         <div class="flex items-center justify-between border-b pb-4">
           <div class="flex items-center space-x-2">
-            <i class="fas fa-hard-hat text-2xl text-[#1e5a6b]" aria-hidden="true"></i>
-            <span id="mobile-nav-drawer-title" class="font-bold text-gray-800">{{ site?.brandName || '' }}</span>
+            <i class="fas fa-industry text-2xl text-[#0F2438]" aria-hidden="true"></i>
+            <span id="mobile-nav-drawer-title" class="font-bold text-[#0F2438]">{{ site?.brandName || '' }}</span>
           </div>
           <button
             ref="closeBtnRef"
             type="button"
             @click="closeMobileMenu"
-            class="text-2xl text-gray-600 hover:text-gray-900 p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+            class="text-2xl text-slate-600 hover:text-slate-900 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
             aria-label="Đóng menu"
           >
             <i class="fas fa-times" aria-hidden="true"></i>
           </button>
         </div>
 
-        <nav aria-label="Điều hướng mobile" class="flex flex-col space-y-3 font-medium text-gray-800 text-base">
+        <nav aria-label="Điều hướng mobile" class="flex flex-col space-y-3 font-semibold text-slate-800 text-base">
           <template v-if="site?.navItems && site.navItems.length > 0">
             <a
               v-for="(item, idx) in site.navItems"
               :key="idx"
               :href="item.href"
-              class="py-2 px-3 rounded hover:bg-gray-100 transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+              class="py-2 px-3 rounded-md hover:bg-slate-100 transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
               @click="closeMobileMenu"
             >
               {{ item.label }}
@@ -222,7 +222,7 @@ onUnmounted(() => {
           <button
             type="button"
             @click="emit('openQuote'); closeMobileMenu()"
-            class="w-full btn-primary text-white py-2.5 rounded-lg font-semibold flex items-center justify-center gap-2 shadow focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+            class="w-full btn-primary text-white py-2.5 rounded-md font-bold flex items-center justify-center gap-2 shadow focus:outline-none focus:ring-2 focus:ring-[#B45309]"
           >
             <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Nhận báo giá nhanh
           </button>
@@ -230,9 +230,9 @@ onUnmounted(() => {
           <a
             v-if="contact?.hotlineDisplay"
             :href="'tel:' + (contact.hotlineE164 || contact.hotlineDisplay)"
-            class="w-full block text-center border border-[#1e5a6b] text-[#1e5a6b] py-2.5 rounded-lg font-semibold hover:bg-[#1e5a6b]/5 transition focus:outline-none focus:ring-2 focus:ring-[#1e5a6b]"
+            class="w-full block text-center border-2 border-[#0F2438] text-[#0F2438] py-2.5 rounded-md font-bold hover:bg-[#0F2438]/5 transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
           >
-            <i class="fas fa-phone-alt mr-2" aria-hidden="true"></i> {{ contact.hotlineDisplay }}
+            <i class="fas fa-phone-alt mr-2 text-[#B45309]" aria-hidden="true"></i> {{ contact.hotlineDisplay }}
             <span v-if="contact.hotlineContactName" class="text-xs font-normal">({{ contact.hotlineContactName }})</span>
           </a>
         </div>
