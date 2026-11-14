@@ -28,6 +28,69 @@ export interface BrowserDiagnostics {
   assertCleanResilience(expectedFailedUrlPattern: RegExp | string): void
 }
 
+/**
+ * Validates resilience test diagnostics against strict criteria:
+ * 1. Zero uncaught JavaScript page errors.
+ * 2. HTTP responses: only the injected status 500 on the expected URL pattern is allowed.
+ * 3. The injected status 500 must have been observed at least once.
+ * 4. Zero transport network failures (failedRequests): HTTP 500 produces an HTTP response,
+ *    never a transport abort or network failure. Any transport failure (even on target) fails.
+ * 5. Console errors: only browser logs directly reporting the 500 on the target URL or
+ *    the simulated failure message are permitted. Any unexpected errors fail.
+ */
+export function validateResilienceDiagnostics(
+  diagnostics: {
+    pageErrors: string[]
+    consoleErrors: ConsoleErrorRecord[]
+    failedRequests: FailedRequestRecord[]
+    httpErrors: HttpErrorRecord[]
+  },
+  expectedFailedUrlPattern: RegExp | string
+): { valid: boolean; reasons: string[] } {
+  const reasons: string[] = []
+
+  if (diagnostics.pageErrors.length > 0) {
+    reasons.push(`Uncaught browser page errors: ${diagnostics.pageErrors.join('; ')}`)
+  }
+
+  const pattern =
+    typeof expectedFailedUrlPattern === 'string'
+      ? new RegExp(expectedFailedUrlPattern)
+      : expectedFailedUrlPattern
+
+  const unexpectedHttp = diagnostics.httpErrors.filter(
+    (e) => !(pattern.test(e.url) && e.status === 500)
+  )
+  if (unexpectedHttp.length > 0) {
+    reasons.push(`Unexpected HTTP errors: ${JSON.stringify(unexpectedHttp)}`)
+  }
+
+  const expectedHttp = diagnostics.httpErrors.filter(
+    (e) => pattern.test(e.url) && e.status === 500
+  )
+  if (expectedHttp.length === 0) {
+    reasons.push('Injected HTTP 500 was not observed')
+  }
+
+  if (diagnostics.failedRequests.length > 0) {
+    reasons.push(`Unexpected network transport failures: ${JSON.stringify(diagnostics.failedRequests)}`)
+  }
+
+  const unexpectedConsole = diagnostics.consoleErrors.filter((c) => {
+    const matchesUrl = pattern.test(c.text) || (c.location && pattern.test(c.location))
+    const isExpected500Message = /500|Failed to load resource|Simulated products error/i.test(c.text)
+    return !(matchesUrl && isExpected500Message)
+  })
+  if (unexpectedConsole.length > 0) {
+    reasons.push(`Unexpected console errors: ${JSON.stringify(unexpectedConsole)}`)
+  }
+
+  return {
+    valid: reasons.length === 0,
+    reasons,
+  }
+}
+
 export const test = baseTest.extend<{
   diagnostics: BrowserDiagnostics
 }>({
@@ -85,38 +148,11 @@ export const test = baseTest.extend<{
           expect(httpErrors, 'HTTP error responses (>=400) detected').toEqual([])
         },
         assertCleanResilience(expectedFailedUrlPattern: RegExp | string) {
-          // 1. Zero uncaught JavaScript page errors
-          expect(pageErrors, 'Uncaught browser page errors in resilience test').toEqual([])
-
-          const pattern =
-            typeof expectedFailedUrlPattern === 'string'
-              ? new RegExp(expectedFailedUrlPattern)
-              : expectedFailedUrlPattern
-
-          // 2. HTTP responses: only the injected 500 on the expected pattern is allowed
-          const unexpectedHttp = httpErrors.filter(
-            (e) => !(pattern.test(e.url) && e.status === 500)
+          const result = validateResilienceDiagnostics(
+            { pageErrors, consoleErrors, failedRequests, httpErrors },
+            expectedFailedUrlPattern
           )
-          expect(unexpectedHttp, 'Unexpected HTTP errors in resilience test').toEqual([])
-
-          const expectedHttp = httpErrors.filter(
-            (e) => pattern.test(e.url) && e.status === 500
-          )
-          expect(expectedHttp.length, 'Injected HTTP 500 was not observed').toBeGreaterThanOrEqual(1)
-
-          // 3. Network transport failures: no unexpected network request failures
-          const unexpectedFailedReqs = failedRequests.filter(
-            (r) => !pattern.test(r.url)
-          )
-          expect(unexpectedFailedReqs, 'Unexpected network request failures in resilience test').toEqual([])
-
-          // 4. Console errors: only allow browser logs directly mentioning the injected 500 / simulated error on the target URL
-          const unexpectedConsole = consoleErrors.filter((c) => {
-            const matchesUrl = pattern.test(c.text) || (c.location && pattern.test(c.location))
-            const isExpected500Message = /500|Failed to load resource|Simulated products error/i.test(c.text)
-            return !(matchesUrl && isExpected500Message)
-          })
-          expect(unexpectedConsole, 'Unexpected browser console errors in resilience test').toEqual([])
+          expect(result.reasons, 'Resilience diagnostics validation failed').toEqual([])
         },
       }
 

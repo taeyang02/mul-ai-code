@@ -219,12 +219,16 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       await expect(contactSection.getByText(/0393/).first()).toBeVisible()
       await expect(contactSection.getByText(/thanhan\.bg@vatlieuxd\.com/i).first()).toBeVisible()
 
-      // M1 Happy Path: V3 seed guarantees Google Maps iframe is present and visible
+      // M1 Happy Path: V3 seed guarantees Google Maps iframe is present and matches API mapEmbedUrl
+      const contactApiResponse = await page.request.get('/api/v1/contact')
+      expect(contactApiResponse.ok()).toBe(true)
+      const contactApiData = await contactApiResponse.json()
+      expect(contactApiData.mapEmbedUrl).toBeTruthy()
+
       const mapIframe = contactSection.locator('iframe[title="Bản đồ vị trí trụ sở công ty"]')
       await expect(mapIframe).toBeVisible()
       const mapSrc = await mapIframe.getAttribute('src')
-      expect(mapSrc).toBeTruthy()
-      expect(mapSrc).toContain('google.com/maps/embed')
+      expect(mapSrc).toBe(contactApiData.mapEmbedUrl)
       verifiedSections.push('contact')
 
       // 7. No horizontal overflow
@@ -251,46 +255,50 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     })
   }
 
-  test('Contact Section Layout: Centers contact card and hides map when mapEmbedUrl is null or empty', async ({
-    page,
-    diagnostics,
-  }) => {
-    // Intercept /api/v1/contact to simulate absence of map embed URL (M1)
-    await page.route('**/api/v1/contact', async (route) => {
-      const response = await route.fetch()
-      const json = await response.json()
-      json.mapEmbedUrl = null
-      await route.fulfill({
-        response,
-        json,
+  for (const emptyVal of [null, '']) {
+    const label = emptyVal === null ? 'null' : 'empty string'
+    test(`Contact Section Layout: Centers contact card and hides map when mapEmbedUrl is ${label}`, async ({
+      page,
+      diagnostics,
+    }) => {
+      // Intercept /api/v1/contact to simulate absence of map embed URL (M1)
+      await page.route('**/api/v1/contact', async (route) => {
+        const response = await route.fetch()
+        const json = await response.json()
+        json.mapEmbedUrl = emptyVal
+        await route.fulfill({
+          response,
+          json,
+        })
       })
+
+      await page.setViewportSize({ width: 1440, height: 900 })
+      await page.goto('/', { waitUntil: 'networkidle' })
+      await page.waitForSelector('#app')
+
+      const contactSection = page.locator('section#contact')
+      await expect(contactSection).toBeVisible()
+
+      // Map iframe must NOT be rendered
+      const mapIframe = contactSection.locator('iframe[title="Bản đồ vị trí trụ sở công ty"]')
+      await expect(mapIframe).toHaveCount(0)
+
+      // The container must use max-w-3xl mx-auto (no lg:grid-cols-2) so the single card is centered without blank right half
+      const gridContainer = contactSection.locator('.container > div.grid, .container > div.max-w-3xl').first()
+      await expect(gridContainer).toBeVisible()
+      const containerClass = await gridContainer.getAttribute('class')
+      expect(containerClass).toContain('max-w-3xl')
+      expect(containerClass).toContain('mx-auto')
+      expect(containerClass).not.toContain('grid-cols-2')
+
+      // Contact info headings remain visible without strict-mode violation (distinguishing section h2 and card h3)
+      await expect(contactSection.getByRole('heading', { level: 2, name: /Thông tin liên hệ/i })).toBeVisible()
+      await expect(contactSection.getByRole('heading', { level: 3, name: /Thông tin liên hệ/i })).toBeVisible()
+      await expect(contactSection.getByText(/0393/).first()).toBeVisible()
+
+      diagnostics.assertCleanHappyPath()
     })
-
-    await page.setViewportSize({ width: 1440, height: 900 })
-    await page.goto('/', { waitUntil: 'networkidle' })
-    await page.waitForSelector('#app')
-
-    const contactSection = page.locator('section#contact')
-    await expect(contactSection).toBeVisible()
-
-    // Map iframe must NOT be rendered
-    const mapIframe = contactSection.locator('iframe[title="Bản đồ vị trí trụ sở công ty"]')
-    await expect(mapIframe).toHaveCount(0)
-
-    // The container must use max-w-3xl mx-auto (no lg:grid-cols-2) so the single card is centered without blank right half
-    const gridContainer = contactSection.locator('.container > div.grid, .container > div.max-w-3xl').first()
-    await expect(gridContainer).toBeVisible()
-    const containerClass = await gridContainer.getAttribute('class')
-    expect(containerClass).toContain('max-w-3xl')
-    expect(containerClass).toContain('mx-auto')
-    expect(containerClass).not.toContain('grid-cols-2')
-
-    // Contact info remains visible and complete
-    await expect(contactSection.getByText(/Thông tin liên hệ/i)).toBeVisible()
-    await expect(contactSection.getByText(/0393/).first()).toBeVisible()
-
-    diagnostics.assertCleanHappyPath()
-  })
+  }
 
   test('Mobile Drawer (390x844): layout, navigation links, and backdrop', async ({ page, diagnostics }) => {
     const mobileVp: ViewportConfig = { name: 'mobile', width: 390, height: 844 }
