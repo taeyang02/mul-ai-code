@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 async function setupNetworkInterception(page: any) {
   await page.route('**/api/v1/**', async (route: any) => {

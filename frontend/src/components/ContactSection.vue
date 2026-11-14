@@ -36,8 +36,8 @@ const emit = defineEmits<{
         />
       </div>
 
-      <!-- Main Contact Grid -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10">
+      <!-- Main Contact Grid (Responsive 2-column if mapEmbedUrl provided; centered balanced card if absent) -->
+      <div v-else :class="(contact?.mapEmbedUrl && contact.mapEmbedUrl.trim()) ? 'grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-10' : 'max-w-3xl mx-auto'">
         <!-- Contact Information Card -->
         <div class="bg-white rounded-xl card-shadow p-6 md:p-8 flex flex-col justify-between border border-slate-200">
           <div>
@@ -154,7 +154,7 @@ const emit = defineEmits<{
         </div>
 
         <!-- Google Maps Embed -->
-        <div v-if="contact?.mapEmbedUrl" class="bg-white rounded-xl card-shadow p-6 md:p-8 flex flex-col border border-slate-200">
+        <div v-if="contact?.mapEmbedUrl && contact.mapEmbedUrl.trim()" class="bg-white rounded-xl card-shadow p-6 md:p-8 flex flex-col border border-slate-200">
           <div class="flex items-center gap-2 mb-5">
             <i class="fas fa-map-marked-alt text-2xl text-[#0F2438]" aria-hidden="true"></i>
             <h3 class="text-2xl font-bold text-[#0F2438]">Bản đồ công ty</h3>

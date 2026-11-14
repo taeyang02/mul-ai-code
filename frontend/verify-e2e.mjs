@@ -314,8 +314,10 @@ async function suiteMobileDrawer(browser) {
   assert(box.height >= 600, `mobile drawer height too small for viewport: ${box.height}`)
   assert(box.width >= 200, `mobile drawer width too small: ${box.width}`)
   assert(box.y <= 8, `mobile drawer top not near viewport top: y=${box.y}`)
-  // Right edge should reach near the viewport (fixed right drawer)
+  // Right edge should dock to viewport right edge without overflow (fixed right drawer)
+  assert(box.x >= 0, `mobile drawer overflows left edge: x=${box.x}`)
   assert(box.x + box.width >= 380, `mobile drawer does not reach viewport right edge: ${JSON.stringify(box)}`)
+  assert(box.x + box.width <= 391, `mobile drawer overflows right edge: x+width=${box.x + box.width}`)
   log(`[drawer] open box x=${box.x} y=${box.y} w=${box.width} h=${box.height}`)
 
   const backdrop = page.locator('div.fixed.inset-0').first()

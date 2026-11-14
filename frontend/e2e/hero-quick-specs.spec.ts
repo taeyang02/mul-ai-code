@@ -1,4 +1,5 @@
-import { test, expect, type Page, type Route, type Locator } from '@playwright/test'
+import { test, expect } from './fixtures'
+import type { Page, Route, Locator } from '@playwright/test'
 
 /**
  * RD-T1 / RD-1 Hero Quick Specs (API-driven) — unified tip for hosted CI.

@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from './fixtures'
+import type { Page } from '@playwright/test'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as crypto from 'node:crypto'
@@ -142,6 +143,7 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
   for (const vp of viewports) {
     test(`Responsive viewport [${vp.name} (${vp.width}x${vp.height})]: layout, brand, product & hotline`, async ({
       page,
+      diagnostics,
     }) => {
       await page.setViewportSize({ width: vp.width, height: vp.height })
       await page.goto('/', { waitUntil: 'networkidle' })
@@ -216,6 +218,14 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       await expect(contactSection.getByText(/Lỗi tải thông tin liên hệ|Thử tải lại/i)).toHaveCount(0)
       await expect(contactSection.getByText(/0393/).first()).toBeVisible()
       await expect(contactSection.getByText(/thanhan\.bg@vatlieuxd\.com/i).first()).toBeVisible()
+
+      // If Google Maps embed is supplied by API/DB migration, verify iframe src (M1)
+      const mapIframe = contactSection.locator('iframe[title="Bản đồ vị trí trụ sở công ty"]')
+      if ((await mapIframe.count()) > 0) {
+        await expect(mapIframe).toBeVisible()
+        const mapSrc = await mapIframe.getAttribute('src')
+        expect(mapSrc).toContain('google.com/maps')
+      }
       verifiedSections.push('contact')
 
       // 7. No horizontal overflow
@@ -236,10 +246,13 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
         sample_products: sampleNames,
         sections_verified: verifiedSections,
       })
+
+      // 9. M3: Assert clean browser diagnostics for happy path (no uncaught page errors, no console errors, no failed requests)
+      diagnostics.assertCleanHappyPath()
     })
   }
 
-  test('Mobile Drawer (390x844): layout, navigation links, and backdrop', async ({ page }) => {
+  test('Mobile Drawer (390x844): layout, navigation links, and backdrop', async ({ page, diagnostics }) => {
     const mobileVp: ViewportConfig = { name: 'mobile', width: 390, height: 844 }
     await page.setViewportSize({ width: mobileVp.width, height: mobileVp.height })
     await page.goto('/', { waitUntil: 'networkidle' })
@@ -252,14 +265,32 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     const drawer = page.locator('#mobile-nav-drawer').first()
     await expect(drawer).toBeVisible()
 
-    // Bounding box checks
+    // M2: Wait for slide-in animation (300ms) to finish and drawer geometry to stabilize
+    await page.waitForFunction(() => {
+      const el = document.getElementById('mobile-nav-drawer')
+      if (!el) return false
+      const r = el.getBoundingClientRect()
+      // Drawer is docked to right edge: r.right aligns with window.innerWidth (<= 1px tolerance) and width is stable (>= 200px)
+      return Math.abs(r.right - window.innerWidth) <= 1 && r.width >= 200
+    }, { timeout: 5000 })
+
+    // M2: Strict bounding box checks asserting both lower and upper horizontal bounds (no horizontal overflow)
     const box = await drawer.boundingBox()
     expect(box).not.toBeNull()
     if (box) {
       expect(box.height).toBeGreaterThanOrEqual(600)
       expect(box.width).toBeGreaterThanOrEqual(200)
-      expect(box.x + box.width).toBeGreaterThanOrEqual(380)
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(mobileVp.width + 1)
+      expect(box.x + box.width).toBeGreaterThanOrEqual(mobileVp.width - 2)
     }
+
+    // M2: Verify title and close controls are clearly rendered and visible
+    const drawerTitle = drawer.locator('#mobile-nav-drawer-title')
+    await expect(drawerTitle).toBeVisible()
+
+    const closeBtn = drawer.locator('button[aria-label="Đóng menu"]').first()
+    await expect(closeBtn).toBeVisible()
 
     // Navigation links visible inside drawer
     const navItems = ['Trang chủ', 'Giới thiệu', 'Sản phẩm', 'Lợi thế', 'Liên hệ']
@@ -268,19 +299,39 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       await expect(link).toBeVisible()
     }
 
-    // Capture drawer open acceptance screenshot
+    // M2: Recapture drawer open acceptance screenshot after stable final geometry
     await captureAcceptanceScreenshot(page, 'mobile-drawer-open', mobileVp, {
       status: 'passed',
+      drawer_box: box,
       sections_verified: ['mobile-drawer'],
     })
 
     // Close button works
-    const closeBtn = drawer.locator('button[aria-label="Đóng menu"]').first()
     await closeBtn.click()
     await expect(drawer).toBeHidden()
+
+    // Wait for transition-out to complete and verify no horizontal overflow after closing
+    await page.waitForFunction(() => {
+      const el = document.getElementById('mobile-nav-drawer')
+      return !el || el.offsetParent === null || window.getComputedStyle(el).display === 'none'
+    }, { timeout: 5000 })
+
+    const overflow = await page.evaluate(() => {
+      const doc = document.documentElement
+      return {
+        scrollWidth: doc.scrollWidth,
+        clientWidth: doc.clientWidth,
+      }
+    })
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
+
+    // M3: Assert clean browser diagnostics
+    diagnostics.assertCleanHappyPath()
   })
 
-  test('Resilience: Per-section retry recovers when an API call fails', async ({ page }) => {
+  test('Resilience: Per-section retry recovers when an API call fails', async ({ page, diagnostics }) => {
+    const productsSection = page.locator('section#products')
+
     // Inject failure only for /products endpoint on initial load
     let shouldFail = true
     await page.route('**/api/v1/products**', async (route) => {
@@ -292,22 +343,47 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
 
     await page.goto('/', { waitUntil: 'networkidle' })
     await page.waitForSelector('#app')
+    await expect(productsSection).toBeVisible()
 
-    // Retry button should appear in Products section
-    const retryBtn = page.getByRole('button', { name: /Thử tải lại|Thử lại|tải lại/i }).first()
+    // M4: Assert retry button and error alert are specifically rendered inside Products section
+    const productsErrorAlert = productsSection.locator('[role="alert"]').first()
+    await expect(productsErrorAlert).toBeVisible()
+    await expect(productsErrorAlert).toContainText(/Không thể tải danh mục sản phẩm|Simulated products error/i)
+
+    const retryBtn = productsSection.getByRole('button', { name: /Thử tải lại|Thử lại|tải lại/i }).first()
     await expect(retryBtn).toBeVisible()
+
+    // M4: Verify that zero product card headings exist in section#products while in error state
+    await expect(productsSection.locator('h3')).toHaveCount(0)
+
+    // M4: Bind retry action to response 200 on /api/v1/products
+    const recoverResponsePromise = page.waitForResponse(
+      (r) => r.url().includes('/api/v1/products') && r.status() === 200,
+      { timeout: 10000 }
+    )
 
     // Now resolve route successfully and click retry
     shouldFail = false
     await retryBtn.click()
 
-    // Products should recover and retry button disappear
-    await page.waitForTimeout(1000)
-    const productCard = page.locator('.product-card, [data-testid="product-item"], h3').first()
-    await expect(productCard).toBeVisible()
+    // Wait for recovery response 200
+    await recoverResponsePromise
+
+    // M4: Assert retry button and error state clear from section#products
+    await expect(productsErrorAlert).toHaveCount(0)
+    await expect(retryBtn).toHaveCount(0)
+
+    // M4: Assert recovered product cards specifically inside section#products (not page-wide h3)
+    const recoveredHeadings = productsSection.locator('h3')
+    await expect(recoveredHeadings.first()).toBeVisible()
+    const productCount = await recoveredHeadings.count()
+    expect(productCount).toBeGreaterThanOrEqual(1)
+
+    // M3 & M4: Verify diagnostics distinguish expected injected 500 from unexpected errors
+    diagnostics.assertCleanResilience(/\/api\/v1\/products/)
   })
 
-  test('Synthetic Quote Request Submission', async ({ page }) => {
+  test('Synthetic Quote Request Submission', async ({ page, diagnostics }) => {
     const desktopVp: ViewportConfig = { name: 'desktop', width: 1280, height: 800 }
     await page.setViewportSize({ width: desktopVp.width, height: desktopVp.height })
     await page.goto('/', { waitUntil: 'networkidle' })
@@ -379,5 +455,8 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       marker,
       sections_verified: ['quote-modal'],
     })
+
+    // M3: Assert clean browser diagnostics
+    diagnostics.assertCleanHappyPath()
   })
 })
