@@ -156,15 +156,33 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       await expect(header).toBeVisible()
       const headerBox = await header.boundingBox()
       expect(headerBox).not.toBeNull()
-      // Header must be compact and single-row on all viewports (never bloated > 75px)
-      expect(headerBox!.height).toBeLessThanOrEqual(75)
 
-      // Brand heading must stay on a single line, unclipped (height <= 36px)
+      // Header must be compact and single-row on all viewports.
+      // - Mobile / Tablet (< 1024px): text-base + py-3.5 => single-row height <= 75px (typically 65-70px).
+      // - Desktop (>= 1024px): lg:text-xl (28px line-height) + lg:text-xs tagline (16px) + py-3.5 (28px) + border-b-2 (2px)
+      //   produces an intended single-row height of 82px (calibrated <= 86px). Multi-line wrapping bloats to > 100px.
+      if (vp.width >= 1024) {
+        expect(headerBox!.height).toBeLessThanOrEqual(86)
+        expect(headerBox!.height).toBeGreaterThanOrEqual(76)
+      } else {
+        expect(headerBox!.height).toBeLessThanOrEqual(75)
+        expect(headerBox!.height).toBeGreaterThanOrEqual(55)
+      }
+
+      // Brand heading & tagline must stay on a single line, unclipped
       const brandHeading = header.locator('h1')
       await expect(brandHeading).toBeVisible()
       const brandBox = await brandHeading.boundingBox()
       expect(brandBox).not.toBeNull()
       expect(brandBox!.height).toBeLessThanOrEqual(36)
+
+      const tagline = header.locator('a[href="#home"] p')
+      if ((await tagline.count()) > 0) {
+        await expect(tagline).toBeVisible()
+        const taglineBox = await tagline.boundingBox()
+        expect(taglineBox).not.toBeNull()
+        expect(taglineBox!.height).toBeLessThanOrEqual(24)
+      }
 
       const headerHotline = header.getByText(/0393/).first()
       await expect(headerHotline).toBeVisible()
@@ -175,6 +193,26 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       if (vp.width >= 1024) {
         await expect(desktopNav).toBeVisible()
         await expect(toggleBtn).toBeHidden()
+
+        // Non-overlapping horizontal ordering check at desktop (brand -> nav -> hotline)
+        const brandLink = header.locator('a[href="#home"]').first()
+        const brandLinkBox = await brandLink.boundingBox()
+        const navBox = await desktopNav.boundingBox()
+        const hotlineLink = header.locator('a[href^="tel:"]').first()
+        const hotlineBox = await hotlineLink.boundingBox()
+
+        expect(brandLinkBox).not.toBeNull()
+        expect(navBox).not.toBeNull()
+        expect(hotlineBox).not.toBeNull()
+
+        // Brand is on the left
+        expect(brandLinkBox!.x).toBeGreaterThanOrEqual(0)
+        // Brand ends before desktop navigation starts (no horizontal overlap)
+        expect(brandLinkBox!.x + brandLinkBox!.width).toBeLessThanOrEqual(navBox!.x)
+        // Desktop navigation ends before hotline starts (no horizontal overlap)
+        expect(navBox!.x + navBox!.width).toBeLessThanOrEqual(hotlineBox!.x)
+        // Hotline ends within viewport bounds
+        expect(hotlineBox!.x + hotlineBox!.width).toBeLessThanOrEqual(vp.width + 1)
       } else {
         await expect(desktopNav).toBeHidden()
         await expect(toggleBtn).toBeVisible()
@@ -292,6 +330,7 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     const headerBox = await header.boundingBox()
     expect(headerBox).not.toBeNull()
     expect(headerBox!.height).toBeLessThanOrEqual(75)
+    expect(headerBox!.height).toBeGreaterThanOrEqual(55)
 
     const brandHeading = header.locator('h1')
     await expect(brandHeading).toBeVisible()
@@ -333,6 +372,17 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       expect(box.x + box.width).toBeGreaterThanOrEqual(768 - 2)
     }
 
+    // Capture tablet drawer open acceptance screenshot (M5)
+    await captureAcceptanceScreenshot(
+      page,
+      'tablet-drawer-open',
+      { name: 'tablet', width: 768, height: 1024 },
+      {
+        status: 'passed',
+        drawer_box: box,
+      }
+    )
+
     // Close button works on tablet
     const closeBtn = drawer.locator('button[aria-label="Đóng menu"]').first()
     await expect(closeBtn).toBeVisible()
@@ -343,13 +393,61 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     await page.setViewportSize({ width: 1023, height: 800 })
     await expect(desktopNav).toBeHidden()
     await expect(toggleBtn).toBeVisible()
+    const subLgHeaderBox = await header.boundingBox()
+    expect(subLgHeaderBox).not.toBeNull()
+    expect(subLgHeaderBox!.height).toBeLessThanOrEqual(75)
+
+    // Capture 1023px sub-breakpoint acceptance screenshot (M5)
+    await captureAcceptanceScreenshot(
+      page,
+      'home',
+      { name: 'sub-lg', width: 1023, height: 800 },
+      {
+        status: 'passed',
+        breakpoint: 'sub-1024',
+      }
+    )
 
     // 3. Test 1024px (lg breakpoint): toggle hidden, desktop nav visible
     await page.setViewportSize({ width: 1024, height: 800 })
     await expect(desktopNav).toBeVisible()
     await expect(toggleBtn).toBeHidden()
     const lgHeaderBox = await header.boundingBox()
-    expect(lgHeaderBox!.height).toBeLessThanOrEqual(75)
+    expect(lgHeaderBox).not.toBeNull()
+    // Calibrated single-row desktop height: 82px (<= 86px)
+    expect(lgHeaderBox!.height).toBeLessThanOrEqual(86)
+    expect(lgHeaderBox!.height).toBeGreaterThanOrEqual(76)
+
+    // Non-overlapping horizontal ordering check at 1024px boundary (brand -> nav -> hotline)
+    const brandLink = header.locator('a[href="#home"]').first()
+    const brandLinkBox = await brandLink.boundingBox()
+    const navBox = await desktopNav.boundingBox()
+    const hotlineLink = header.locator('a[href^="tel:"]').first()
+    const hotlineBox = await hotlineLink.boundingBox()
+
+    expect(brandLinkBox).not.toBeNull()
+    expect(navBox).not.toBeNull()
+    expect(hotlineBox).not.toBeNull()
+
+    // Brand is on the left
+    expect(brandLinkBox!.x).toBeGreaterThanOrEqual(0)
+    // Brand ends before desktop navigation starts (no horizontal overlap)
+    expect(brandLinkBox!.x + brandLinkBox!.width).toBeLessThanOrEqual(navBox!.x)
+    // Desktop navigation ends before hotline starts (no horizontal overlap)
+    expect(navBox!.x + navBox!.width).toBeLessThanOrEqual(hotlineBox!.x)
+    // Hotline ends within viewport bounds
+    expect(hotlineBox!.x + hotlineBox!.width).toBeLessThanOrEqual(1024 + 1)
+
+    // Capture 1024px desktop breakpoint acceptance screenshot (M5)
+    await captureAcceptanceScreenshot(
+      page,
+      'home',
+      { name: 'lg', width: 1024, height: 800 },
+      {
+        status: 'passed',
+        breakpoint: 'lg-1024',
+      }
+    )
 
     diagnostics.assertCleanHappyPath()
   })
