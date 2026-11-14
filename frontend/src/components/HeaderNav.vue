@@ -86,22 +86,22 @@ onUnmounted(() => {
 
 <template>
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b-2 border-[#B45309] shadow-sm transition-all">
-    <div class="container mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
+    <div class="container mx-auto px-4 md:px-6 lg:px-4 xl:px-8 py-3.5 flex items-center justify-between gap-2 lg:gap-3 xl:gap-4">
       <!-- Logo & Company Brand -->
-      <a href="#home" class="flex items-center space-x-2.5 focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded-lg p-1 flex-shrink-0 min-w-0">
-        <i class="fas fa-hard-hat text-2xl lg:text-3xl text-[#0F2438] flex-shrink-0" aria-hidden="true"></i>
+      <a href="#home" class="flex items-center space-x-2 lg:space-x-2.5 focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded-lg p-1 flex-shrink-0 min-w-0">
+        <i class="fas fa-hard-hat text-2xl lg:text-2xl xl:text-3xl text-[#0F2438] flex-shrink-0" aria-hidden="true"></i>
         <div class="leading-tight">
-          <h1 class="font-extrabold text-base lg:text-xl tracking-tight text-[#0F2438] whitespace-nowrap">
+          <h1 class="font-extrabold text-base lg:text-lg xl:text-xl tracking-tight text-[#0F2438] whitespace-nowrap">
             {{ site?.brandName || '' }}
           </h1>
-          <p v-if="site?.tagline" class="text-[10px] lg:text-xs font-bold text-[#B45309] tracking-wider uppercase whitespace-nowrap">
+          <p v-if="site?.tagline" class="text-[10px] lg:text-[11px] xl:text-xs font-bold text-[#B45309] tracking-wider uppercase whitespace-nowrap">
             {{ site.tagline }}
           </p>
         </div>
       </a>
 
       <!-- Desktop Navigation (hidden on mobile and tablet < 1024px, strictly driven by site.navItems) -->
-      <nav aria-label="Điều hướng chính" class="hidden lg:flex items-center lg:space-x-5 xl:space-x-7 font-semibold text-slate-700">
+      <nav aria-label="Điều hướng chính" class="hidden lg:flex items-center lg:space-x-3 xl:space-x-6 font-semibold text-slate-700 text-sm">
         <template v-if="site?.navItems && site.navItems.length > 0">
           <a
             v-for="(item, idx) in site.navItems"
@@ -116,7 +116,7 @@ onUnmounted(() => {
         <button
           type="button"
           @click="emit('openQuote')"
-          class="btn-primary text-white px-4 py-2 rounded-md text-sm font-bold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#B45309] whitespace-nowrap flex-shrink-0"
+          class="btn-primary text-white px-3 py-1.5 xl:px-4 xl:py-2 rounded-md text-xs xl:text-sm font-bold shadow hover:shadow-md transition flex items-center gap-1.5 xl:gap-2 focus:outline-none focus:ring-2 focus:ring-[#B45309] whitespace-nowrap flex-shrink-0"
         >
           <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Nhận báo giá
         </button>
@@ -128,7 +128,7 @@ onUnmounted(() => {
         <a
           v-if="contact?.hotlineDisplay"
           :href="'tel:' + (contact.hotlineE164 || contact.hotlineDisplay)"
-          class="flex items-center gap-1.5 bg-[#0F2438]/5 text-[#0F2438] border border-[#0F2438]/20 hover:bg-[#0F2438] hover:text-white px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition focus:outline-none focus:ring-2 focus:ring-[#0F2438] whitespace-nowrap flex-shrink-0"
+          class="flex items-center gap-1.5 bg-[#0F2438]/5 text-[#0F2438] border border-[#0F2438]/20 hover:bg-[#0F2438] hover:text-white px-2.5 py-1.5 lg:px-2.5 lg:py-1.5 xl:px-3.5 xl:py-2 rounded-md font-bold text-xs xl:text-sm transition focus:outline-none focus:ring-2 focus:ring-[#0F2438] whitespace-nowrap flex-shrink-0"
           aria-label="Gọi hotline tư vấn"
         >
           <i class="fas fa-phone-alt text-xs md:text-sm text-[#B45309]" aria-hidden="true"></i>
