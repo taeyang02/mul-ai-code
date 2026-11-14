@@ -82,7 +82,9 @@ class ApiIntegrationTest {
         mockMvc.perform(get("/api/v1/contact"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.hotlineE164").value("0393284994"))
-                .andExpect(jsonPath("$.email").value("thanhan.bg@vatlieuxd.com"));
+                .andExpect(jsonPath("$.email").value("thanhan.bg@vatlieuxd.com"))
+                .andExpect(jsonPath("$.mapEmbedUrl").value(
+                        "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d4800.592803124682!2d105.9060136!3d21.327291!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31351b00de267aab%3A0xf9bdf6e4539848fd!2sC%C3%B4ng%20Ty%20TNHH%20Thanh%20An%20B%E1%BA%AFc%20Giang!5e1!3m2!1svi!2s!4v1775215410461!5m2!1svi!2s"));
     }
 
     @Test
