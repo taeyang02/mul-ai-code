@@ -151,11 +151,34 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
 
       const verifiedSections: string[] = []
 
-      // 1. Header Navigation & Brand (SS-2)
-      const brand = page.getByText(/Thanh An/i).first()
-      await expect(brand).toBeVisible()
-      const headerHotline = page.locator('header').getByText(/0393/).first()
+      // 1. Header Navigation, Brand & Responsive Height (SS-2, M5)
+      const header = page.locator('header')
+      await expect(header).toBeVisible()
+      const headerBox = await header.boundingBox()
+      expect(headerBox).not.toBeNull()
+      // Header must be compact and single-row on all viewports (never bloated > 75px)
+      expect(headerBox!.height).toBeLessThanOrEqual(75)
+
+      // Brand heading must stay on a single line, unclipped (height <= 36px)
+      const brandHeading = header.locator('h1')
+      await expect(brandHeading).toBeVisible()
+      const brandBox = await brandHeading.boundingBox()
+      expect(brandBox).not.toBeNull()
+      expect(brandBox!.height).toBeLessThanOrEqual(36)
+
+      const headerHotline = header.getByText(/0393/).first()
       await expect(headerHotline).toBeVisible()
+
+      // Unified breakpoint check (lg = 1024px): desktop nav on >= 1024, hamburger toggle on < 1024
+      const desktopNav = header.locator('nav[aria-label="Điều hướng chính"]')
+      const toggleBtn = header.getByRole('button', { name: /Toggle Navigation Menu/i })
+      if (vp.width >= 1024) {
+        await expect(desktopNav).toBeVisible()
+        await expect(toggleBtn).toBeHidden()
+      } else {
+        await expect(desktopNav).toBeHidden()
+        await expect(toggleBtn).toBeVisible()
+      }
       verifiedSections.push('header')
 
       // 2. Hero Quick Specs from Live API (SS-2: wait for real catalog data, no skeleton, no error)
@@ -254,6 +277,82 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       diagnostics.assertCleanHappyPath()
     })
   }
+
+  test('Header Navigation Responsive Breakpoint & Drawer Interaction (Tablet 768px & Breakpoint 1023/1024px)', async ({
+    page,
+    diagnostics,
+  }) => {
+    // 1. Tablet 768px: test header geometry and drawer interaction (M5)
+    await page.setViewportSize({ width: 768, height: 1024 })
+    await page.goto('/', { waitUntil: 'networkidle' })
+    await page.waitForSelector('#app')
+
+    const header = page.locator('header')
+    await expect(header).toBeVisible()
+    const headerBox = await header.boundingBox()
+    expect(headerBox).not.toBeNull()
+    expect(headerBox!.height).toBeLessThanOrEqual(75)
+
+    const brandHeading = header.locator('h1')
+    await expect(brandHeading).toBeVisible()
+    const brandBox = await brandHeading.boundingBox()
+    expect(brandBox).not.toBeNull()
+    expect(brandBox!.height).toBeLessThanOrEqual(36)
+
+    // On tablet, desktop nav is hidden and hamburger toggle is visible
+    const desktopNav = header.locator('nav[aria-label="Điều hướng chính"]')
+    const toggleBtn = header.getByRole('button', { name: /Toggle Navigation Menu/i })
+    await expect(desktopNav).toBeHidden()
+    await expect(toggleBtn).toBeVisible()
+
+    // Open drawer on tablet
+    await toggleBtn.click()
+    const drawer = page.locator('#mobile-nav-drawer').first()
+    await expect(drawer).toBeVisible()
+
+    // Wait for slide-in animation to stabilize
+    await page.waitForFunction(
+      () => {
+        const el = document.getElementById('mobile-nav-drawer')
+        if (!el) return false
+        const r = el.getBoundingClientRect()
+        return Math.abs(r.right - window.innerWidth) <= 1 && r.width >= 200
+      },
+      undefined,
+      { timeout: 5000 }
+    )
+
+    // Bounding box checks on tablet
+    const box = await drawer.boundingBox()
+    expect(box).not.toBeNull()
+    if (box) {
+      expect(box.height).toBeGreaterThanOrEqual(600)
+      expect(box.width).toBeGreaterThanOrEqual(200)
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(768 + 1)
+      expect(box.x + box.width).toBeGreaterThanOrEqual(768 - 2)
+    }
+
+    // Close button works on tablet
+    const closeBtn = drawer.locator('button[aria-label="Đóng menu"]').first()
+    await expect(closeBtn).toBeVisible()
+    await closeBtn.click()
+    await expect(drawer).toBeHidden()
+
+    // 2. Test 1023px (just below lg breakpoint): toggle visible, desktop nav hidden
+    await page.setViewportSize({ width: 1023, height: 800 })
+    await expect(desktopNav).toBeHidden()
+    await expect(toggleBtn).toBeVisible()
+
+    // 3. Test 1024px (lg breakpoint): toggle hidden, desktop nav visible
+    await page.setViewportSize({ width: 1024, height: 800 })
+    await expect(desktopNav).toBeVisible()
+    await expect(toggleBtn).toBeHidden()
+    const lgHeaderBox = await header.boundingBox()
+    expect(lgHeaderBox!.height).toBeLessThanOrEqual(75)
+
+    diagnostics.assertCleanHappyPath()
+  })
 
   for (const emptyVal of [null, '']) {
     const label = emptyVal === null ? 'null' : 'empty string'

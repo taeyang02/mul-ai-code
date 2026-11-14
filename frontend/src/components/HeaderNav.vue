@@ -88,26 +88,26 @@ onUnmounted(() => {
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b-2 border-[#B45309] shadow-sm transition-all">
     <div class="container mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
       <!-- Logo & Company Brand -->
-      <a href="#home" class="flex items-center space-x-2.5 focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded-lg p-1">
-        <i class="fas fa-hard-hat text-2xl md:text-3xl text-[#0F2438]" aria-hidden="true"></i>
+      <a href="#home" class="flex items-center space-x-2.5 focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded-lg p-1 flex-shrink-0 min-w-0">
+        <i class="fas fa-hard-hat text-2xl lg:text-3xl text-[#0F2438] flex-shrink-0" aria-hidden="true"></i>
         <div class="leading-tight">
-          <h1 class="font-extrabold text-base md:text-xl tracking-tight text-[#0F2438]">
+          <h1 class="font-extrabold text-base lg:text-xl tracking-tight text-[#0F2438] whitespace-nowrap">
             {{ site?.brandName || '' }}
           </h1>
-          <p v-if="site?.tagline" class="text-[10px] md:text-xs font-bold text-[#B45309] tracking-wider uppercase">
+          <p v-if="site?.tagline" class="text-[10px] lg:text-xs font-bold text-[#B45309] tracking-wider uppercase whitespace-nowrap">
             {{ site.tagline }}
           </p>
         </div>
       </a>
 
-      <!-- Desktop Navigation (hidden on mobile, strictly driven by site.navItems) -->
-      <nav aria-label="Điều hướng chính" class="hidden md:flex items-center space-x-7 font-semibold text-slate-700">
+      <!-- Desktop Navigation (hidden on mobile and tablet < 1024px, strictly driven by site.navItems) -->
+      <nav aria-label="Điều hướng chính" class="hidden lg:flex items-center lg:space-x-5 xl:space-x-7 font-semibold text-slate-700">
         <template v-if="site?.navItems && site.navItems.length > 0">
           <a
             v-for="(item, idx) in site.navItems"
             :key="idx"
             :href="item.href"
-            class="hover:text-[#0F2438] transition focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded px-1"
+            class="hover:text-[#0F2438] transition focus:outline-none focus:ring-2 focus:ring-[#0F2438] rounded px-1 whitespace-nowrap"
           >
             {{ item.label }}
           </a>
@@ -116,31 +116,31 @@ onUnmounted(() => {
         <button
           type="button"
           @click="emit('openQuote')"
-          class="btn-primary text-white px-4 py-2 rounded-md text-sm font-bold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#B45309]"
+          class="btn-primary text-white px-4 py-2 rounded-md text-sm font-bold shadow hover:shadow-md transition flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#B45309] whitespace-nowrap flex-shrink-0"
         >
           <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> Nhận báo giá
         </button>
       </nav>
 
-      <!-- Header Actions: Single responsive hotline + Mobile Menu Toggle -->
-      <div class="flex items-center gap-2 md:gap-3">
-        <!-- Direct Hotline Button (Visible directly on mobile viewport 390 and desktop on first paint) -->
+      <!-- Header Actions: Single responsive hotline + Mobile/Tablet Menu Toggle -->
+      <div class="flex items-center gap-2 md:gap-3 flex-shrink-0">
+        <!-- Direct Hotline Button (Visible directly on mobile, tablet and desktop on first paint) -->
         <a
           v-if="contact?.hotlineDisplay"
           :href="'tel:' + (contact.hotlineE164 || contact.hotlineDisplay)"
-          class="flex items-center gap-1.5 bg-[#0F2438]/5 text-[#0F2438] border border-[#0F2438]/20 hover:bg-[#0F2438] hover:text-white px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition focus:outline-none focus:ring-2 focus:ring-[#0F2438]"
+          class="flex items-center gap-1.5 bg-[#0F2438]/5 text-[#0F2438] border border-[#0F2438]/20 hover:bg-[#0F2438] hover:text-white px-2.5 py-1.5 md:px-3.5 md:py-2 rounded-md font-bold text-xs md:text-sm transition focus:outline-none focus:ring-2 focus:ring-[#0F2438] whitespace-nowrap flex-shrink-0"
           aria-label="Gọi hotline tư vấn"
         >
           <i class="fas fa-phone-alt text-xs md:text-sm text-[#B45309]" aria-hidden="true"></i>
           <span class="tracking-tight">{{ contact.hotlineDisplay }}</span>
         </a>
 
-        <!-- Mobile Menu Toggle Button (hidden on desktop/tablet) -->
+        <!-- Mobile/Tablet Menu Toggle Button (visible on mobile and tablet < 1024px) -->
         <button
           ref="toggleBtnRef"
           type="button"
           @click="toggleMobileMenu"
-          class="md:hidden text-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F2438] p-1.5 rounded-md hover:bg-slate-100 border border-slate-200"
+          class="lg:hidden text-xl text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0F2438] p-1.5 rounded-md hover:bg-slate-100 border border-slate-200"
           aria-label="Toggle Navigation Menu"
           :aria-expanded="mobileMenuOpen"
           aria-controls="mobile-nav-drawer"
@@ -152,7 +152,7 @@ onUnmounted(() => {
     </div>
   </header>
 
-  <!-- Mobile Drawer Backdrop & Menu Teleported to body to escape header backdrop-blur containing block -->
+  <!-- Mobile/Tablet Drawer Backdrop & Menu Teleported to body to escape header backdrop-blur containing block -->
   <Teleport to="body">
     <transition
       enter-active-class="transition-opacity duration-300 ease-out"
@@ -164,7 +164,7 @@ onUnmounted(() => {
     >
       <div
         v-if="mobileMenuOpen"
-        class="fixed inset-0 bg-black/50 z-40 md:hidden"
+        class="fixed inset-0 bg-black/50 z-40 lg:hidden"
         @click="closeMobileMenu"
         aria-hidden="true"
       ></div>
@@ -186,7 +186,7 @@ onUnmounted(() => {
         aria-modal="true"
         aria-labelledby="mobile-nav-drawer-title"
         @keydown="handleDrawerKeydown"
-        class="fixed top-0 right-0 bottom-0 h-full w-72 max-w-[85vw] bg-white shadow-2xl z-50 md:hidden p-6 flex flex-col space-y-5 overflow-y-auto"
+        class="fixed top-0 right-0 bottom-0 h-full w-72 max-w-[85vw] bg-white shadow-2xl z-50 lg:hidden p-6 flex flex-col space-y-5 overflow-y-auto"
       >
         <div class="flex items-center justify-between border-b pb-4">
           <div class="flex items-center space-x-2">
