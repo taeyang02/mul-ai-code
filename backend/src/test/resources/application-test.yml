@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173
+  http:
+    trusted-proxies: []
+  quote:
+    rate-limit:
+      max-requests: 3
+      window-seconds: 60

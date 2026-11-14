@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: thanhan
+      POSTGRES_USER: thanhan
+      POSTGRES_PASSWORD: thanhan
+    ports:
+      - "5432:5432"
+    volumes:
+      - thanhan_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thanhan -d thanhan"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: jdbc:postgresql://db:5432/thanhan
+      DATABASE_USERNAME: thanhan
+      DATABASE_PASSWORD: thanhan
+      APP_CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:8088
+      # Empty by default: ignore client-supplied X-Forwarded-For (backend also exposed on :8080).
+      # When only a known reverse proxy reaches the API, set APP_HTTP_TRUSTED_PROXIES to that peer IP/CIDR.
+      APP_HTTP_TRUSTED_PROXIES: ${APP_HTTP_TRUSTED_PROXIES:-}
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    # Serves SPA on :8088; nginx proxies /api/ → backend:8080 (see frontend/nginx.conf)
+    # Build-time VITE_API_BASE_URL defaults to /api/v1 (relative; works behind nginx proxy)
+    ports:
+      - "8088:80"
+    depends_on:
+      - backend
+
+volumes:
+  thanhan_pg:

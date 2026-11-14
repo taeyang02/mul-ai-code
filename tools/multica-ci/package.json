@@ -1,0 +1,12 @@
+{
+  "name": "multica-ci",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "multica-ci": "./bin/multica-ci.mjs"
+  },
+  "scripts": {
+    "test:fixtures": "node ./bin/multica-ci.mjs review fixture-run --results-dir ./fixtures/sample-run --sha abc123def456 --repo taeyang02/mul-ai-code"
+  }
+}
