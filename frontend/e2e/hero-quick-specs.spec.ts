@@ -251,7 +251,7 @@ async function assertReadableUnclippedInHero(locator: Locator) {
 }
 
 test.describe('Hero Quick Specs (RD-1 API-driven)', () => {
-  test('alt catalog: name + LONG_SPECS readable/unclipped at 1280 and 390', async ({ page }) => {
+  test('alt catalog: name + LONG_SPECS readable/unclipped at 1280 and 390', async ({ page, diagnostics }) => {
     await mockApi(page, { products: 'alt' })
 
     for (const vp of [
@@ -273,9 +273,10 @@ test.describe('Hero Quick Specs (RD-1 API-driven)', () => {
       await assertReadableUnclippedInHero(home.getByText('BetaMill'))
       await assertReadableUnclippedInHero(home.getByText(LONG_SPECS))
     }
+    diagnostics.assertCleanHappyPath()
   })
 
-  test('empty products → empty-state copy (no sample rows)', async ({ page }) => {
+  test('empty products → empty-state copy (no sample rows)', async ({ page, diagnostics }) => {
     await mockApi(page, { products: 'empty' })
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/', { waitUntil: 'networkidle' })
@@ -285,9 +286,10 @@ test.describe('Hero Quick Specs (RD-1 API-driven)', () => {
     await assertReadableUnclippedInHero(home.getByText(/Hiện chưa có dữ liệu danh mục sản phẩm/i))
     await expect(home.getByText('Thép Hộp Mạ Kẽm Alpha')).toHaveCount(0)
     await expect(home.getByText('Thép Hòa Phát')).toHaveCount(0)
+    diagnostics.assertCleanHappyPath()
   })
 
-  test('products error → retry recovers with alt catalog', async ({ page }) => {
+  test('products error → retry recovers with alt catalog', async ({ page, diagnostics }) => {
     let productsMode: ProductsMode = 'error'
     await mockApi(page, { products: () => productsMode })
 
@@ -306,9 +308,12 @@ test.describe('Hero Quick Specs (RD-1 API-driven)', () => {
     await retry.click()
     await assertReadableUnclippedInHero(home.getByText('Thép Hộp Mạ Kẽm Alpha'))
     await assertReadableUnclippedInHero(home.getByText('Xà Gồ C-Z Beta'))
+
+    // M3: Assert clean resilience, distinguishing expected products error from unexpected errors
+    diagnostics.assertCleanResilience(/\/products/)
   })
 
-  test('products delayed → loading skeleton then alt catalog', async ({ page }) => {
+  test('products delayed → loading skeleton then alt catalog', async ({ page, diagnostics }) => {
     let release!: () => void
     const productsHold = new Promise<void>((r) => {
       release = r
@@ -327,5 +332,6 @@ test.describe('Hero Quick Specs (RD-1 API-driven)', () => {
     release()
     await assertReadableUnclippedInHero(home.getByText('Thép Hộp Mạ Kẽm Alpha'))
     await assertReadableUnclippedInHero(home.getByText(LONG_SPECS))
+    diagnostics.assertCleanHappyPath()
   })
 })

@@ -219,13 +219,12 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
       await expect(contactSection.getByText(/0393/).first()).toBeVisible()
       await expect(contactSection.getByText(/thanhan\.bg@vatlieuxd\.com/i).first()).toBeVisible()
 
-      // If Google Maps embed is supplied by API/DB migration, verify iframe src (M1)
+      // M1 Happy Path: V3 seed guarantees Google Maps iframe is present and visible
       const mapIframe = contactSection.locator('iframe[title="Bản đồ vị trí trụ sở công ty"]')
-      if ((await mapIframe.count()) > 0) {
-        await expect(mapIframe).toBeVisible()
-        const mapSrc = await mapIframe.getAttribute('src')
-        expect(mapSrc).toContain('google.com/maps')
-      }
+      await expect(mapIframe).toBeVisible()
+      const mapSrc = await mapIframe.getAttribute('src')
+      expect(mapSrc).toBeTruthy()
+      expect(mapSrc).toContain('google.com/maps/embed')
       verifiedSections.push('contact')
 
       // 7. No horizontal overflow
@@ -252,6 +251,47 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     })
   }
 
+  test('Contact Section Layout: Centers contact card and hides map when mapEmbedUrl is null or empty', async ({
+    page,
+    diagnostics,
+  }) => {
+    // Intercept /api/v1/contact to simulate absence of map embed URL (M1)
+    await page.route('**/api/v1/contact', async (route) => {
+      const response = await route.fetch()
+      const json = await response.json()
+      json.mapEmbedUrl = null
+      await route.fulfill({
+        response,
+        json,
+      })
+    })
+
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/', { waitUntil: 'networkidle' })
+    await page.waitForSelector('#app')
+
+    const contactSection = page.locator('section#contact')
+    await expect(contactSection).toBeVisible()
+
+    // Map iframe must NOT be rendered
+    const mapIframe = contactSection.locator('iframe[title="Bản đồ vị trí trụ sở công ty"]')
+    await expect(mapIframe).toHaveCount(0)
+
+    // The container must use max-w-3xl mx-auto (no lg:grid-cols-2) so the single card is centered without blank right half
+    const gridContainer = contactSection.locator('.container > div.grid, .container > div.max-w-3xl').first()
+    await expect(gridContainer).toBeVisible()
+    const containerClass = await gridContainer.getAttribute('class')
+    expect(containerClass).toContain('max-w-3xl')
+    expect(containerClass).toContain('mx-auto')
+    expect(containerClass).not.toContain('grid-cols-2')
+
+    // Contact info remains visible and complete
+    await expect(contactSection.getByText(/Thông tin liên hệ/i)).toBeVisible()
+    await expect(contactSection.getByText(/0393/).first()).toBeVisible()
+
+    diagnostics.assertCleanHappyPath()
+  })
+
   test('Mobile Drawer (390x844): layout, navigation links, and backdrop', async ({ page, diagnostics }) => {
     const mobileVp: ViewportConfig = { name: 'mobile', width: 390, height: 844 }
     await page.setViewportSize({ width: mobileVp.width, height: mobileVp.height })
@@ -266,13 +306,17 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     await expect(drawer).toBeVisible()
 
     // M2: Wait for slide-in animation (300ms) to finish and drawer geometry to stabilize
-    await page.waitForFunction(() => {
-      const el = document.getElementById('mobile-nav-drawer')
-      if (!el) return false
-      const r = el.getBoundingClientRect()
-      // Drawer is docked to right edge: r.right aligns with window.innerWidth (<= 1px tolerance) and width is stable (>= 200px)
-      return Math.abs(r.right - window.innerWidth) <= 1 && r.width >= 200
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const el = document.getElementById('mobile-nav-drawer')
+        if (!el) return false
+        const r = el.getBoundingClientRect()
+        // Drawer is docked to right edge: r.right aligns with window.innerWidth (<= 1px tolerance) and width is stable (>= 200px)
+        return Math.abs(r.right - window.innerWidth) <= 1 && r.width >= 200
+      },
+      undefined,
+      { timeout: 5000 }
+    )
 
     // M2: Strict bounding box checks asserting both lower and upper horizontal bounds (no horizontal overflow)
     const box = await drawer.boundingBox()
@@ -311,10 +355,14 @@ test.describe('Thanh An Fullstack E2E Suite', () => {
     await expect(drawer).toBeHidden()
 
     // Wait for transition-out to complete and verify no horizontal overflow after closing
-    await page.waitForFunction(() => {
-      const el = document.getElementById('mobile-nav-drawer')
-      return !el || el.offsetParent === null || window.getComputedStyle(el).display === 'none'
-    }, { timeout: 5000 })
+    await page.waitForFunction(
+      () => {
+        const el = document.getElementById('mobile-nav-drawer')
+        return !el || el.offsetParent === null || window.getComputedStyle(el).display === 'none'
+      },
+      undefined,
+      { timeout: 5000 }
+    )
 
     const overflow = await page.evaluate(() => {
       const doc = document.documentElement

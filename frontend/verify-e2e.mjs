@@ -175,6 +175,7 @@ async function waitForApp(page, { requireBrand = true } = {}) {
         const h1 = document.querySelector('header h1')
         return !!(h1 && /Thanh An Bắc Giang/i.test(h1.textContent || ''))
       },
+      undefined,
       { timeout: 30000 }
     )
     return
@@ -187,6 +188,7 @@ async function waitForApp(page, { requireBrand = true } = {}) {
         /Thử tải lại|Thử lại/i.test(b.textContent || '')
       )
     },
+    undefined,
     { timeout: 30000 }
   )
 }

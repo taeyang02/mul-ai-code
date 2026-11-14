@@ -101,7 +101,7 @@ async function setupNetworkInterception(page: any) {
 }
 
 test.describe('Keyboard Accessibility (a11y)', () => {
-  test('Quote Modal: focus trap, Escape to close, and focus restoration', async ({ page }) => {
+  test('Quote Modal: focus trap, Escape to close, and focus restoration', async ({ page, diagnostics }) => {
     await page.setViewportSize({ width: 1280, height: 800 })
     await setupNetworkInterception(page)
 
@@ -162,9 +162,11 @@ test.describe('Keyboard Accessibility (a11y)', () => {
     await page.waitForTimeout(100)
     const restored = await triggerBtn.evaluate((el) => el === document.activeElement)
     expect(restored).toBe(true)
+
+    diagnostics.assertCleanHappyPath()
   })
 
-  test('Mobile Drawer (390x844): initial focus, focus trap, Escape, and focus restoration', async ({ page }) => {
+  test('Mobile Drawer (390x844): initial focus, focus trap, Escape, and focus restoration', async ({ page, diagnostics }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await setupNetworkInterception(page)
 
@@ -215,5 +217,7 @@ test.describe('Keyboard Accessibility (a11y)', () => {
     await page.waitForTimeout(100)
     const restoredToToggle = await toggleBtn.evaluate((el) => el === document.activeElement)
     expect(restoredToToggle).toBe(true)
+
+    diagnostics.assertCleanHappyPath()
   })
 })
